@@ -1527,7 +1527,7 @@ var SIL_CLUES=[
   {label:'First Arc',icon:'📖',fmt:function(c){return c.arc;}},
   {label:'Affiliation',icon:'🏴',fmt:function(c){return c.affiliation;}},
 ];
-var SIL_BLURS=['blur(20px) brightness(0.1)','blur(14px) brightness(0.2)','blur(8px) brightness(0.4)','blur(3px) brightness(0.7)','blur(0px) brightness(1)'];
+var SIL_BLURS=['blur(0px) brightness(0) contrast(0)','blur(0px) brightness(0) contrast(0)','blur(4px) brightness(0.5) grayscale(1)','blur(2px) brightness(0.8)','blur(0px) brightness(1)'];
 
 function initSilMode(){
   silTarget=CHAR_DB[Math.floor(Math.random()*CHAR_DB.length)];
@@ -1540,7 +1540,12 @@ function renderSil(){
   var col=avatarColor(silTarget);
   var init=silTarget.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
   var blurF=silOver?SIL_BLURS[4]:SIL_BLURS[Math.min(silRevealed,4)];
-  var avatarHtml='<div class="sil-avatar" style="background:linear-gradient(135deg,'+col+','+col+'88);filter:'+blurF+'">'+(silOver||silRevealed>=4?init:'?')+'</div>';
+  var silBg = silOver||silRevealed>=2 ? 'linear-gradient(135deg,'+col+','+col+'88)' : '#1a1a2e';
+  var silContent = silOver||silRevealed>=4 ? init : '?';
+  var silStyle = silOver ? '' : (silRevealed<2 ? 'filter:brightness(0);' : silRevealed<3 ? 'filter:grayscale(1) brightness(0.6);' : 'filter:grayscale(0) brightness(0.85);');
+  var avatarHtml='<div class="sil-avatar" style="background:'+silBg+';'+silStyle+'">'
+    +'<span style="color:'+(silRevealed<2&&!silOver?'rgba(255,255,255,0.9)':'white')+';text-shadow:0 2px 8px rgba(0,0,0,0.8)">'+silContent+'</span>'
+    +'</div>';
   var cluesHtml=SIL_CLUES.map(function(clue,i){
     var rev=i<silRevealed||silOver;
     return '<div class="sil-clue'+(rev?'':' locked')+'">'
@@ -2100,7 +2105,7 @@ function renderSil(){
   var wrongHtml=silWrong.length?'<div class="desc-wrong-guesses"><h4>Wrong guesses ('+silWrong.length+')</h4><div class="desc-wrong-list">'+silWrong.map(function(n){return '<span class="wrong-tag">'+n+'</span>';}).join('')+'</div></div>':'';
   var hint=!silOver?'<p class="clue-reveal-hint">Each wrong guess unblurs the avatar & reveals a clue ('+silRevealed+'/'+SIL_CLUES.length+')</p>':'';
   var inputHtml=silOver?'':buildModeSearch('sil-search','silSrch','silKey','silPick','silGiveUp','sil-sugg');
-  el.innerHTML='<div style="max-width:700px;margin:0 auto 1rem;text-align:center"><h2 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem">👤 Who is this silhouette?</h2><p style="color:#94a3b8;font-size:0.88rem">Identify the character — wrong guesses reveal more clues</p></div><div class="silhouette-wrap">'+avatarHtml+'<div class="sil-clue-list">'+cluesHtml+'</div></div>'+hint+wrongHtml+inputHtml+'<div id="sil-result"></div>';
+  el.innerHTML='<div style="max-width:700px;margin:0 auto 1rem;text-align:center"><h2 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem">👤 Who is this silhouette?</h2><p style="color:#94a3b8;font-size:0.88rem">Identify the character — wrong guesses reveal more clues</p></div><div class="silhouette-wrap" style="padding:1.5rem;background:var(--panel);border:2px solid rgba(240,192,64,0.2);border-radius:16px;max-width:700px;margin:0 auto 1rem">'+avatarHtml+'<div class="sil-clue-list">'+cluesHtml+'</div></div>'+hint+wrongHtml+inputHtml+'<div id="sil-result"></div>';
   if(!silOver){var inp=document.getElementById('sil-search');if(inp)inp.focus();}
 }
 function silSrch(q){q=q.trim().toLowerCase();var sg=document.getElementById('sil-sugg');if(!q){sg.style.display='none';silSugg=[];return;}var byN=CHAR_DB.filter(function(c){return c.name.toLowerCase().includes(q);});var aNames=new Set(searchByAlias(q));var byA=CHAR_DB.filter(function(c){return aNames.has(c.name)&&byN.indexOf(c)<0;});silSugg=byN.concat(byA).slice(0,10);if(!silSugg.length){sg.style.display='none';return;}silAIdx=-1;sg.style.display='block';sg.innerHTML=silSugg.map(function(c,i){var already=silWrong.indexOf(c.name)>=0;var init=c.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();var col=avatarColor(c);return '<div class="suggestion-item'+(already?' already-guessed':'')+'" onclick="silPick('+i+')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:10px;font-size:0.95rem;'+(already?'opacity:0.4;pointer-events:none;':'')+'"><div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.78rem;flex-shrink:0;color:white;background:linear-gradient(135deg,'+col+','+col+'88)">'+init+'</div><span>'+c.name+'</span>'+(already?'<small style="color:#6b7280;margin-left:auto">Already guessed</small>':'')+'</div>';}).join('');}
