@@ -68,6 +68,27 @@
   .legend-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
   .empty-state{text-align:center;color:#374151;padding:3rem 1rem;font-size:0.95rem}
   .empty-state .skull{font-size:3rem;display:block;margin-bottom:0.5rem}
+  
+  .mode-switcher{display:flex;justify-content:center;gap:12px;margin:1rem 0 0.5rem}
+  .mode-btn{background:rgba(240,192,64,0.1);border:2px solid rgba(240,192,64,0.3);color:#94a3b8;padding:10px 24px;border-radius:30px;font-size:0.9rem;font-weight:700;font-family:'Cinzel',serif;cursor:pointer;transition:all 0.2s;letter-spacing:1px}
+  .mode-btn.active{background:linear-gradient(135deg,var(--dark-gold),var(--gold));border-color:var(--gold);color:#000}
+  .mode-btn:hover:not(.active){border-color:var(--gold);color:var(--gold)}
+  #desc-mode{display:none}
+  #desc-mode.active{display:block}
+  #classic-mode.hidden{display:none}
+  .clue-container{max-width:700px;margin:0 auto 1.5rem;display:flex;flex-direction:column;gap:10px}
+  .clue-card{background:var(--card);border:2px solid rgba(240,192,64,0.3);border-radius:12px;padding:16px 20px;display:flex;align-items:flex-start;gap:14px;animation:slideIn 0.4s ease}
+  .clue-card.locked{background:rgba(30,45,66,0.4);border-color:rgba(255,255,255,0.1);opacity:0.5}
+  .clue-icon{font-size:1.6rem;flex-shrink:0;width:40px;text-align:center}
+  .clue-label{font-size:0.65rem;font-weight:700;font-family:'Cinzel',serif;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+  .clue-text{font-size:0.95rem;color:var(--white);line-height:1.4}
+  .clue-text.blurred{filter:blur(5px);user-select:none;color:rgba(255,255,255,0.3)}
+  .desc-wrong-guesses{max-width:700px;margin:0 auto 1rem}
+  .desc-wrong-guesses h4{font-size:0.7rem;font-family:'Cinzel',serif;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+  .desc-wrong-list{display:flex;flex-wrap:wrap;gap:6px}
+  .wrong-tag{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:3px 10px;border-radius:20px;font-size:0.8rem}
+  .clue-reveal-hint{text-align:center;font-size:0.8rem;color:#4b5563;margin-bottom:1rem;font-style:italic}
+
   ::-webkit-scrollbar{width:6px;height:6px}
   ::-webkit-scrollbar-track{background:var(--navy)}
   ::-webkit-scrollbar-thumb{background:var(--dark-gold);border-radius:3px}
@@ -82,8 +103,13 @@
   <h1>🏴‍☠️ ONE PIECE DLE</h1>
   <p>Guess the mystery One Piece anime character!</p>
   <span class="guess-counter" id="guess-counter">0 guesses</span>
+  <div class="mode-switcher">
+    <button class="mode-btn active" id="btn-classic" onclick="switchMode('classic')">⚔️ Classic</button>
+    <button class="mode-btn" id="btn-desc" onclick="switchMode('desc')">🔍 Description</button>
+  </div>
 </header>
 <div id="app">
+  <div id="classic-mode">
   <div class="legend">
     <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Exact match</div>
     <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div>Partial match (same saga/faction/type)</div>
@@ -114,6 +140,9 @@
     </div>
   </div>
   <div id="result-screen"></div>
+  </div><!-- end classic-mode -->
+
+  <div id="desc-mode"></div>
 </div>
 <script>
 
@@ -570,6 +599,119 @@ function searchByAlias(q) {
     .map(a => ALIAS_LOOKUP[a]);
 }
 
+
+// ── CHARACTER DESCRIPTIONS ────────────────────────────────────────────────
+const CHAR_DESC = {
+  "Monkey D. Luffy":        { height:"Average height, lean and wiry build", skin:"Light tan skin", hair:"Short, black, messy hair", feature:"Scar under his left eye; always wears a straw hat" },
+  "Roronoa Zoro":           { height:"Tall, powerfully muscular build", skin:"Light skin", hair:"Short, cropped green hair", feature:"Three gold earrings on left ear; always carries three swords" },
+  "Nami":                   { height:"Average height, slim figure", skin:"Light skin", hair:"Long, orange hair (usually worn down or in a ponytail)", feature:"Tattoo of a pinwheel and tangerine on left shoulder" },
+  "Usopp":                  { height:"Average height, lanky build", skin:"Dark tan skin", hair:"Short, black curly hair under a striped bandana", feature:"Extraordinarily long nose; typically wears goggles" },
+  "Sanji":                  { height:"Tall, lean athletic build", skin:"Light skin", hair:"Blond hair swept over one eye", feature:"Spiral curly eyebrow; always seen in a suit or chef attire" },
+  "Tony Tony Chopper":      { height:"Very short, small and round body", skin:"Light brownish fur (reindeer)", hair:"Pink/magenta fuzzy hat covering short reddish-brown fur", feature:"Blue nose; small antlers; wears a pink striped hat" },
+  "Nico Robin":             { height:"Tall, slender and graceful build", skin:"Dark olive/tan skin", hair:"Long, straight black hair", feature:"Large blue eyes; usually wears sunglasses or stylish clothing" },
+  "Franky":                 { height:"Extremely tall and massively built (cyborg)", skin:"Light tan skin", hair:"Short, blue hair styled upward in a pompadour", feature:"Cybernetic body with metal arms; star tattoos; always in speedos or overalls" },
+  "Brook":                  { height:"Extremely tall, skeleton-thin (literally a skeleton)", skin:"No skin — a living skeleton", hair:"Large black afro", feature:"A living skeleton; wears a top hat and suit; always carries a cane sword" },
+  "Jinbe":                  { height:"Huge, very tall and broad (fishman)", skin:"Blue-gray skin with dark patches (whale shark fishman)", hair:"Short, black spiky hair", feature:"Large wide mouth with thick lips; webbed hands; fishman of the whale shark" },
+  "Shanks":                 { height:"Tall, athletic and well-built", skin:"Light skin", hair:"Long, red hair", feature:"Missing left arm; always wears a wide-brimmed straw hat (same as Luffy's)" },
+  "Edward Newgate":         { height:"Titanic — one of the tallest characters", skin:"Light skin, heavily scarred chest", hair:"White hair tied in a topknot with a headband", feature:"Giant curved white mustache; always carries a massive bisento; multiple scars across chest" },
+  "Charlotte Linlin":       { height:"Massive — enormous and wide", skin:"Light pink skin", hair:"Pink hair in two large pigtails with buns", feature:"Huge round body; enormous teeth; wears a striped dress; Napoleon hat on head" },
+  "Kaido":                  { height:"Massive and towering (one of the largest)", skin:"Gray-purple skin", hair:"Long, black wild hair", feature:"Two curved horns; massive spiked club; blue flames tattoo; serpentine dragon form" },
+  "Marshall D. Teach":      { height:"Tall, very heavyset and obese build", skin:"Dark brown skin", hair:"Black, short and messy beard and hair", feature:"Missing several front teeth; always grinning; wears a feathered captain's hat" },
+  "Gol D. Roger":           { height:"Tall, lean and imposing build", skin:"Light skin", hair:"Short, dark wavy hair (and a signature mustache)", feature:"Large distinctive curved mustache; wide grin; usually shown in a captain's coat" },
+  "Silvers Rayleigh":       { height:"Average to tall, lean but strong in his prime", skin:"Light skin, tanned", hair:"Short silver/white hair; silver beard", feature:"Small round glasses; scar over right eye; typically seen with a cigarette" },
+  "Boa Hancock":            { height:"Tall, extremely slender and curvaceous", skin:"Light skin", hair:"Long, black hair usually in a ponytail", feature:"Snake earrings; Gorgon eyes mark on her back; Salome snake companion" },
+  "Donquixote Doflamingo":  { height:"Very tall and extremely lanky", skin:"Light skin", hair:"Short, blond hair", feature:"Pink feathered coat; heart-shaped sunglasses; wide sinister grin; thin stringy body" },
+  "Trafalgar Law":          { height:"Tall, lean and slender build", skin:"Light skin", hair:"Short, black hair under a spotted hat", feature:"Tattoos across his entire body and face; yellow eyes; always wears his spotted hat" },
+  "Dracule Mihawk":         { height:"Tall, lean and imposing build", skin:"Light skin", hair:"Short, black hair and a pointed beard", feature:"Golden hawk-like eyes (Hawk Eyes); enormous black cross-shaped blade on his back; black cape" },
+  "Buggy":                  { height:"Average height, average build", skin:"Light skin", hair:"Long, blue hair styled outward", feature:"Round bright-red nose; face painted with white and red; wears a striped captain's hat" },
+  "Crocodile":              { height:"Very tall, lean and imposing build", skin:"Dark skin", hair:"Short, slicked-back black hair", feature:"Large hook replacing his left hand; golden rings on right hand; scar running down his face" },
+  "Bartholomew Kuma":       { height:"Massive — one of the tallest characters", skin:"Dark brown skin", hair:"Short, black hair", feature:"Always carries a Bible; paw-pads on both palms; wears a large hat; blank expression" },
+  "Gecko Moria":            { height:"Enormous, very tall and wide with a huge body", skin:"Gray-white pale skin", hair:"Massive black spiky hair", feature:"Huge stitched nose and chin; enormous body; always carries Doppelman shadow clone" },
+  "Rob Lucci":              { height:"Average to tall, lean and extremely muscular", skin:"Light skin", hair:"Short, black hair with top hat", feature:"Pigeon (Hattori) sits on his shoulder; CP9/CP0 tattoo; always serious expression; top hat" },
+  "Smoker":                 { height:"Tall, muscular and stocky build", skin:"Light skin", hair:"Short, white hair", feature:"Always has two cigars in his mouth; smoke constantly pouring from his body; large jitte weapon" },
+  "Portgas D. Ace":         { height:"Tall, lean and very athletic build", skin:"Light tan skin", hair:"Short, messy black hair", feature:"ASCE tattoo on left arm; freckles on cheeks; always shirtless; orange hat on back" },
+  "Kozuki Oden":            { height:"Massive — very tall and huge muscular build", skin:"Light skin", hair:"Wild dark hair with a topknot", feature:"Two gigantic swords; wild, wide-open eyes; known for his enormous presence" },
+  "Kozuki Momonosuke":      { height:"Short (child form); tall (adult dragon form)", skin:"Light skin", hair:"Dark hair in a topknot", feature:"Purple dragon form (artificial Zoan); small pink dragon in child form; topknot hairstyle" },
+  "Charlotte Katakuri":     { height:"Massive — one of the tallest and most muscular", skin:"Light skin", hair:"Large, wild dark spiky hair", feature:"Enormously wide mouth with fangs hidden by scarf; mochi-mochi powers; always eating donuts" },
+  "Eustass Kid":            { height:"Tall, muscular and broad-shouldered", skin:"Light skin", hair:"Wild, spiky dark red hair", feature:"Left arm replaced by a huge mechanical metal arm; goggles on forehead; aggressive expression" },
+  "Killer":                 { height:"Tall, lean and athletic build", skin:"Light skin", hair:"Long, blond hair (always covering his face completely)", feature:"Never shows his face (hidden by hair and mask); dual scythe blades on arms" },
+  "Bentham":                { height:"Average height, slim build", skin:"Light skin", hair:"Black hair styled in a pompadour", feature:"Always wears elaborate flamboyant drag outfits; number '2' motif; can copy anyone's face" },
+  "Marco":                  { height:"Average to tall, lean and fit build", skin:"Light tan skin", hair:"Short, blond hair styled upward", feature:"Blue phoenix flames; always has a relaxed expression; pineapple-style blond hair" },
+  "Cavendish":              { height:"Tall, lean and handsome build", skin:"Light skin", hair:"Long, flowing blond hair", feature:"Extremely handsome face; white horse companion (Farul); large feathered hat; rapier" },
+  "Sabo":                   { height:"Tall, lean and athletic build", skin:"Light skin", hair:"Short, blond messy hair", feature:"X-shaped scar across his face; stovepipe hat; pipe weapon; wears a tattered top hat" },
+  "Emporio Ivankov":        { height:"Massive — very tall and giant head", skin:"Dark skin", hair:"Enormous purple afro hairstyle", feature:"Huge face with giant eyes and lips; queen/king of Newkama; can change people's gender" },
+  "Perona":                 { height:"Short and petite build", skin:"Light pale skin", hair:"Twin pigtails of pink/light-colored hair", feature:"Gothic lolita style dresses; always carries a stuffed bear; floats via ghost-ghost powers" },
+  "Nefertari Vivi":         { height:"Average height, slim figure", skin:"Light skin", hair:"Long, blue wavy hair", feature:"Blue hair tied back in various styles; royal princess attire; always elegant bearing" },
+  "Arlong":                 { height:"Very tall (fishman)", skin:"Gray-green skin (sawshark fishman)", hair:"Short dark hair in a mohawk style", feature:"Enormous nose like a sawshark's bill; webbed hands; fishman of sawshark species" },
+  "Caesar Clown":           { height:"Average height, very thin and gangly build", skin:"Light pale skin with a grayish tint", hair:"Large wild light-colored hair", feature:"Large round head; mask-like face; gas and chemical motifs; always manipulative expression" },
+  "Sakazuki":               { height:"Tall, powerfully built like a military general", skin:"Dark skin", hair:"Short, black hair", feature:"Magma powers; massive physical build; admiral's coat; large flowing coat draped over shoulders" },
+  "Kuzan":                  { height:"Very tall, very lean and relaxed-looking build", skin:"Light skin", hair:"Short, black curly hair", feature:"Right leg made of ice; ice powers; typically napping; relaxed posture; long admiral's coat" },
+  "Borsalino":              { height:"Very tall, extremely thin and lanky build", skin:"Light skin", hair:"Short, dark hair slicked back", feature:"Light-based powers; extremely slow and relaxed movement; always smiling; sunglasses" },
+  "Issho":                  { height:"Tall, muscular build", skin:"Light skin with scars", hair:"Completely bald (no hair)", feature:"Completely blind; uses gravity powers; always seen with a sword-cane; bandaged eyes; samurai-style robes" },
+  "Sengoku":                { height:"Tall and broad, authoritative military build", skin:"Light skin", hair:"Large white afro hair and white beard", feature:"Massive white afro; goatee; admiral/fleet admiral's coat; Buddha giant transformation" },
+  "Monkey D. Garp":         { height:"Tall, massively muscular for an old man", skin:"Light skin", hair:"Short gray hair under a marine captain's hat (with dog ears)", feature:"Dog-ear marine hat; always has a sack of cannonballs; enormous physical strength despite age" },
+  "Daz Bonez":              { height:"Tall, lean with a very angular build", skin:"Light skin", hair:"Short, dark slicked-back hair", feature:"Can turn his body into steel blades; angular face; serious expression" },
+  "Enel":                   { height:"Tall, lean and athletic build", skin:"Dark tan skin", hair:"Long blond hair wrapped in a bandana with ear drums motif", feature:"Large ear drums attached to his head; self-proclaimed 'God'; lightning powers; bare chest" },
+  "Rosinante":              { height:"Tall and lanky build", skin:"Light skin", hair:"Short, blond-orange hair", feature:"Often seen in a crazed flaming disguise; cigarette always lit (accidentally catching fire); kind gentle eyes" },
+  "Yamato":                 { height:"Tall, powerfully built (taller than most women)", skin:"Light skin", hair:"Long, white-silver hair with oni horns", feature:"Oni horns on head; always wears a large horn-adorned mask; Kaido's child; wears Oden's clothing style" },
+  "Kin'emon":               { height:"Tall, lean samurai build", skin:"Light skin", hair:"Long, dark red hair in a samurai topknot", feature:"Traditional samurai robes; large topknot; serious samurai demeanor; fox-fire sword style" },
+  "Carrot":                 { height:"Short, petite and energetic build", skin:"Light skin", hair:"Short, white fluffy hair with large rabbit ears", feature:"Rabbit mink with large white ears; fluffy white hair; Sulong transformation (full moon)" },
+  "Nekomamushi":            { height:"Massive — huge cat mink, bipedal lion-sized", skin:"Orange/brown cat fur", hair:"Large orange mane (lion-like mink)", feature:"Enormous cat-lion mink; missing left arm; wears elaborate robes; night ruler of Zou" },
+  "Inuarashi":              { height:"Massive — huge dog mink, bipedal", skin:"Light/cream dog fur", hair:"Large pale mane (dog mink)", feature:"Dog mink duke; missing right arm; wears samurai-inspired armor; day ruler of Zou" },
+  "Kawamatsu":              { height:"Tall, muscular kappa-like fishman", skin:"Green skin (kappa fishman)", hair:"Black hair in traditional kappa style", feature:"Round face; kappa (river imp) appearance; carries a traditional kimono and swords" },
+  "Jack":                   { height:"Massive — extremely tall and heavily built", skin:"Gray skin (mammoth fishman)", hair:"Short, dark hair", feature:"Metal tusks attached to his face; mammoth Zoan user; enormous size and brute force" },
+  "Queen":                  { height:"Massive — one of the tallest and widest characters", skin:"Light tan skin", hair:"Long, blond hair in a large elaborate braid", feature:"Enormous obese body with cyborg parts; pterodactyl Zoan; electric hair; flamboyant personality" },
+  "King":                   { height:"Extremely tall and muscular (Lunarian)", skin:"Dark brown skin", hair:"Long, wild black hair", feature:"Large black wings (Lunarian); always wears a mask; flame on his back; pteranodon Zoan" },
+  "Hyogoro":                { height:"Very short, very old and tiny", skin:"Light wrinkled skin", hair:"Short white hair in a samurai style", feature:"Tiny old man; yakuza boss of Wano; enormous power despite tiny size; traditional samurai/yakuza clothing" },
+  "Denjiro":                { height:"Tall, lean samurai build", skin:"Light skin", hair:"Long, dark hair tied back in a topknot", feature:"Long thin scar on his face; traditional samurai robes; fierce intense eyes; Kyoshiro identity in Wano" },
+  "Komurasaki":             { height:"Tall, elegant and slender", skin:"Light skin", hair:"Long, pink-red hair styled elaborately", feature:"Most beautiful woman in Wano; elaborate oiran (courtesan) hairstyle; fans; graceful movement" },
+  "Pedro":                  { height:"Tall, athletic jaguar mink build", skin:"Spotted jaguar fur (mink)", hair:"Wild dark hair with jaguar ears and tail", feature:"Jaguar mink; always wears a large tricorn hat; missing left eye; explosives specialist" },
+  "Shakuyaku":              { height:"Average to tall, slender and mature build", skin:"Light skin", hair:"Short, dark hair", feature:"Former empress of Amazon Lily; always seen near Rayleigh's bar; holds a drink; calm and wise aura" },
+  "Benn Beckman":           { height:"Tall, lean and imposing build", skin:"Light skin", hair:"Long, gray-white hair pulled back", feature:"Always has a cigarette; sniper rifle; most feared crewmate in Red-Hair Pirates; calm deadly eyes" },
+  "Yasopp":                 { height:"Average height, slim build", skin:"Light skin", hair:"Curly dark hair under a headband", feature:"Usopp's father; long nose (like Usopp); always wears a headband; legendary sniper" },
+  "Magellan":               { height:"Very tall, massive and broad", skin:"Purple-tinted skin", hair:"Dark hair with horns", feature:"Large demonic-looking body; poison dripping from body; venom body power; intimidating aura" },
+  "Hody Jones":             { height:"Very tall (fishman)", skin:"Dark blue-gray skin (shark fishman)", hair:"White/silver hair in spiky style", feature:"Shark fishman features; shark-teeth smile; water 7 mark; uses energy steroids" },
+  "Fisher Tiger":           { height:"Huge — very tall fishman build", skin:"Orange-tan spotted skin (tiger pattern)", hair:"Wild dark dreadlock-like hair", feature:"Tiger-patterned skin; large scar across body; Sun Pirates jolly roger on chest; liberator of slaves" },
+  "Rebecca":                { height:"Average height, slender and athletic build", skin:"Light skin", hair:"Long, light pink/coral hair", feature:"Gladiator helmet and armor; fights in a bikini-style outfit; gentle expression despite arena" },
+  "Kyros":                  { height:"Tall, extremely muscular build", skin:"Light skin", hair:"Short, dark hair", feature:"Missing right leg (replaced by tin soldier leg for years); enormous fame as undefeated gladiator; scar" },
+  "Sugar":                  { height:"Very short, child-like small body", skin:"Very pale white skin", hair:"Short dark hair with a big bow", feature:"Permanently looks like a young child (stopped aging at 22); grape-themed clothing; sinister smile" },
+  "Viola":                  { height:"Tall, slender and elegant build", skin:"Light skin", hair:"Long, dark wavy hair", feature:"Green eyes with scan ability; flamenco-dancer style clothing; princess of Dressrosa" },
+  "Bellamy":                { height:"Tall, lean and muscular build", skin:"Light skin", hair:"Short, blond hair", feature:"Spring-Spring powers; tattoos on his chest and body; always looks overconfident and arrogant" },
+  "Wyper":                  { height:"Tall, powerfully built and muscular", skin:"Dark brown skin", hair:"Short, dark wild hair with blue stripes on face", feature:"Traditional Shandian tribal warrior paint on face; carries a large bazooka-skates combo" },
+  "X Drake":                { height:"Tall, lean military-style build", skin:"Light skin", hair:"Short, dark hair", feature:"Allosaur Zoan transformation; former marine; crosses between Supernovas and Marines loyalties" },
+  "Jewelry Bonney":         { height:"Average height, curvy and energetic build", skin:"Light skin", hair:"Short, pink/bubblegum-colored hair", feature:"Always eating massive amounts of food; age-manipulation powers; pink hair; childlike energy" },
+  "Basil Hawkins":          { height:"Tall, very thin and lanky build", skin:"Light skin", hair:"Long, straight platinum blond hair", feature:"Tarot card motif; straw doll in mouth; completely emotionless expression; voodoo-straw body" },
+  "Capone Bege":            { height:"Average, heavyset build with large round head", skin:"Light skin", hair:"Short, slicked back dark hair", feature:"Castle body (fits crew inside); always in a suit; cigar; small body with huge round head" },
+  "Urouge":                 { height:"Massive — extremely tall and wide", skin:"Dark gray skin", hair:"Shaved head with large prayer beads", feature:"Buddhist monk appearance; enormous body with bandaged torso; massive prayer beads around neck" },
+  "Charlotte Smoothie":     { height:"Extremely tall — one of the tallest women", skin:"Light multicolored skin (half-human half-longleg)", hair:"Long, braided hair in multiple colors", feature:"Extremely long legs (longleg heritage); squeezes people/objects like a juice pack; elegant dangerous demeanor" },
+  "Charlotte Cracker":      { height:"Tall and large build", skin:"Light skin", hair:"Short blond hair under a large biscuit-soldier armor", feature:"Always inside a giant biscuit knight armor; real body is small; creates infinite biscuit soldiers" },
+  "Charlotte Perospero":    { height:"Tall, thin and lanky build", skin:"Light skin with candy coating", hair:"Long, curly orange hair", feature:"Candy cane arm (lollipop replacing a limb); candy everywhere on body; licks things constantly" },
+  "Scratchmen Apoo":        { height:"Tall, lean and limber build", skin:"Light skin", hair:"Elaborate braided or cornrowed hair style", feature:"Music-based powers (body IS a DJ set); always dancing or making sounds; eccentric performer" },
+  "Gecko Moria":            { height:"Enormous, very tall and wide with a huge body", skin:"Gray-white pale skin", hair:"Massive black spiky hair", feature:"Huge stitched nose and chin; enormous body; always carries Doppelman shadow clone" },
+  "Kuro":                   { height:"Average height, slim and refined build", skin:"Light skin", hair:"Long, pale blond-silver hair pulled back", feature:"Wears round glasses; very long sharp finger blades; butler-like refined appearance" },
+  "Alvida":                 { height:"Average tall height, extremely slim (after powers)", skin:"Light smooth skin (devil fruit removed all flaws)", hair:"Long, dark black hair", feature:"Extremely smooth and slippery body (after Slip-Slip Fruit); iron mace weapon; considered herself most beautiful" },
+  "Vivi":                   { height:"Average height, slim figure", skin:"Light skin", hair:"Long, blue wavy hair", feature:"Blue hair tied back in various styles; royal princess attire; always elegant bearing" },
+  "Raizo":                  { height:"Average height, stocky ninja build", skin:"Light skin", hair:"Short, wild dark hair in a samurai topknot", feature:"Exaggerated round face; ninja tools; frog-like features; very proud ninja; scroll-scroll powers" },
+  "Monet":                  { height:"Average tall, slender with bird wings for arms", skin:"Light pale skin", hair:"Short green hair with wing motifs", feature:"Harpy body — wings instead of arms; bird legs instead of feet; works with Caesar Clown; snow powers" },
+  "Vergo":                  { height:"Tall, muscular and intimidating build", skin:"Light skin", hair:"Short, dark slicked-back hair", feature:"Always has bamboo in mouth (or on body); can coat body in Haki; secret Marine double agent" },
+  "Daz Bonez":              { height:"Tall, lean with very angular build", skin:"Light skin", hair:"Short, dark slicked-back hair", feature:"Can turn body into steel blades; very angular face; serious expression; Mr. 1 of Baroque Works" },
+  "Baby 5":                 { height:"Average height, slender and energetic", skin:"Light tan skin", hair:"Long, dark hair with a flower ornament", feature:"Can transform any body part into a weapon; says yes to everyone; flower hair ornament" },
+  "Sanjuan Wolf":           { height:"Titanic giant — largest character in the series", skin:"Light skin", hair:"Dark wild hair with collar around neck", feature:"Colossus giant — so tall he wades through the ocean; collar from Impel Down; largest human in series" },
+  "Catarina Devon":         { height:"Tall, slender and sinister build", skin:"Light skin", hair:"Long, wild dark purple-black hair", feature:"Can shapeshift into anyone (Goddess Pistol); crescent moon motif; most dangerous female pirate ever imprisoned" },
+  "Shiryu":                 { height:"Tall, lean and dangerous-looking build", skin:"Light skin", hair:"Short, dark slicked-back hair (now invisible)", feature:"Former chief warden of Impel Down; invisibility powers (Suke Suke); always carries a legendary sword" },
+  "Van Augur":              { height:"Tall, thin and lanky build", skin:"Light skin", hair:"Long, dark wavy hair under a large hat", feature:"Supersonic sniper — legendary accuracy; oversized musket; long dark coat; distant cold expression" },
+  "Scopper Gaban":          { height:"Average height, athletic build", skin:"Light skin", hair:"Dark hair in a topknot", feature:"Roger Pirate crew member; dual hatchet axes; jovial but powerful presence; sailor attire" },
+  "Lucky Roux":             { height:"Very short, extremely obese and rotund", skin:"Light skin", hair:"Short red hair", feature:"Always eating a giant leg of meat; small rotund body; part of Shanks' Red-Hair crew" },
+  "Doc Q":                  { height:"Average tall, sickly thin build", skin:"Very pale sickly skin", hair:"Long, dark wild hair", feature:"Always appears extremely ill/sickly; rides a sick horse (Stronger); scythe weapon; death-based devil fruit" },
+  "Laffitte":               { height:"Tall, thin and unsettling build", skin:"Pale white skin", hair:"Long, light blond hair under a top hat", feature:"Feathered wings; sheriff-star badge; top hat; cane; dancing movement; unsettling smile" },
+  "Jesus Burgess":          { height:"Massive — very tall and enormously muscular", skin:"Dark skin", hair:"Short, blond/light hair", feature:"Wrestler mask covering face; enormous muscles; championship belt; throws ships as weapons" },
+  "Hatchan":                { height:"Very tall (octopus fishman)", skin:"Teal/blue-green skin", hair:"Short dark hair with octopus characteristics", feature:"Six arms (octopus fishman); six swords; friendly and earnest expression; can produce octopus ink" },
+  "Komurasaki":             { height:"Tall, elegant and slender", skin:"Light skin", hair:"Long, pink-red hair styled elaborately", feature:"Most beautiful woman in Wano; elaborate oiran hairstyle; fans; graceful movement" },
+  "Pekoms":                 { height:"Average tall, stocky and wide leonine build", skin:"Light tan fur (lion mink)", hair:"Blonde mane (lion mink features)", feature:"Lion mink; wears a large shell on his back (turtle features too); devout believer" },
+  "Vito":                   { height:"Average, slim build", skin:"Light skin", hair:"Dark curly hair", feature:"Bege's loyal subordinate; formal suit; always mentions movie references" },
+  "Jinbe":                  { height:"Huge, very tall and broad (whale shark fishman)", skin:"Blue-gray skin with dark patches", hair:"Short, black spiky hair", feature:"Large wide mouth with thick lips; webbed hands; 10th Straw Hat; whale shark fishman" },
+};
+
 // ── GAME STATE ────────────────────────────────────────
 let target=null, guesses=[], gameOver=false, activeIdx=-1, currSuggestions=[];
 
@@ -858,4 +1000,205 @@ function endGame(won,cnt){
   }
 }
 
-// ── BOOT ─────────────────────────────────────
+// ── DESC MODE PLACEHOLDER ─────────────────────
+
+// =============================================================
+// DESCRIPTION MODE
+// =============================================================
+let descTarget=null,descWrong=[],descCluesRevealed=1,descOver=false,descSugg=[],descAIdx=-1;
+const CLUES=[
+  {key:'height',label:'Height & Build',icon:'📏'},
+  {key:'skin',  label:'Skin Tone',     icon:'🎨'},
+  {key:'hair',  label:'Hair',          icon:'💇'},
+  {key:'feature',label:'Distinctive Feature',icon:'⭐'},
+];
+
+function switchMode(mode){
+  var cl=document.getElementById('classic-mode');
+  var dl=document.getElementById('desc-mode');
+  var bc=document.getElementById('btn-classic');
+  var bd=document.getElementById('btn-desc');
+  if(mode==='classic'){
+    cl.classList.remove('hidden'); dl.classList.remove('active');
+    bc.classList.add('active'); bd.classList.remove('active');
+  } else {
+    cl.classList.add('hidden'); dl.classList.add('active');
+    bd.classList.add('active'); bc.classList.remove('active');
+    if(!descTarget) initDescMode();
+  }
+}
+window.switchMode=switchMode;
+
+function getDescData(c){ return CHAR_DESC[c.name]||{height:'Unknown build',skin:'Unknown skin tone',hair:'Unknown hair',feature:'No distinctive features recorded'}; }
+
+function initDescMode(){
+  var pool=CHAR_DB.filter(function(c){return !!CHAR_DESC[c.name];});
+  descTarget=pool[Math.floor(Math.random()*pool.length)];
+  descWrong=[]; descCluesRevealed=1; descOver=false;
+  renderDesc();
+}
+window.initDescMode=initDescMode;
+
+function buildClueCard(clue, i, d, revealed) {
+  var txt = d[clue.key] || 'No data';
+  return '<div class="clue-card' + (revealed ? '' : ' locked') + '">'
+    + '<div class="clue-icon">' + (revealed ? clue.icon : '🔒') + '</div>'
+    + '<div><div class="clue-label">' + (revealed ? clue.label : 'Locked — wrong guess reveals next clue') + '</div>'
+    + '<div class="clue-text' + (revealed ? '' : ' blurred') + '">' + txt + '</div></div>'
+    + '</div>';
+}
+
+function buildSearchBox() {
+  return '<div class="search-section" style="max-width:700px;margin:0 auto 1rem">'
+    + '<div class="search-wrapper" style="flex:1;position:relative">'
+    + '<input type="text" id="desc-search" autocomplete="off" placeholder="Type a character name to guess..."'
+    + ' style="width:100%;background:var(--card);border:2px solid rgba(240,192,64,0.4);color:var(--white);padding:12px 16px;border-radius:10px;font-size:1rem;font-family:Nunito,sans-serif;outline:none"'
+    + ' oninput="dSrch(this.value)" onkeydown="dKey(event)">'
+    + '<div id="desc-sugg" style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--panel);border:1px solid rgba(240,192,64,0.3);border-radius:10px;max-height:260px;overflow-y:auto;z-index:100;display:none;box-shadow:0 10px 30px rgba(0,0,0,0.5)"></div>'
+    + '</div>'
+    + '<button class="btn-giveup" onclick="dGiveUp()">Give Up</button>'
+    + '</div>';
+}
+
+function renderDesc(){
+  var el=document.getElementById('desc-mode');
+  var d=getDescData(descTarget);
+
+  var wrongHtml = '';
+  if (descWrong.length) {
+    wrongHtml = '<div class="desc-wrong-guesses"><h4>Wrong guesses (' + descWrong.length + ')</h4><div class="desc-wrong-list">'
+      + descWrong.map(function(n){ return '<span class="wrong-tag">' + n + '</span>'; }).join('')
+      + '</div></div>';
+  }
+
+  var cluesHtml = CLUES.map(function(clue, i){
+    return buildClueCard(clue, i, d, i < descCluesRevealed);
+  }).join('');
+
+  var hint = '';
+  if (!descOver) {
+    hint = descCluesRevealed < CLUES.length
+      ? '<p class="clue-reveal-hint">Each wrong guess reveals the next clue (' + descCluesRevealed + '/' + CLUES.length + ' shown)</p>'
+      : '<p class="clue-reveal-hint">All 4 clues revealed! Keep guessing...</p>';
+  }
+
+  var inputHtml = descOver ? '' : buildSearchBox();
+
+  el.innerHTML = '<div style="max-width:700px;margin:0 auto 1rem;text-align:center">'
+    + '<h2 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem">🔍 Who is this character?</h2>'
+    + '<p style="color:#94a3b8;font-size:0.88rem">Use the clues to identify the mystery One Piece character</p>'
+    + '</div>'
+    + '<div class="clue-container">' + cluesHtml + '</div>'
+    + hint + wrongHtml + inputHtml
+    + '<div id="desc-result"></div>';
+
+  if (!descOver) {
+    var inp = document.getElementById('desc-search');
+    if (inp) inp.focus();
+  }
+}
+
+function dSrch(q){
+  q = q.trim().toLowerCase();
+  var sg = document.getElementById('desc-sugg');
+  if (!q) { sg.style.display='none'; descSugg=[]; return; }
+  var byN = CHAR_DB.filter(function(c){ return c.name.toLowerCase().includes(q); });
+  var aNames = new Set(searchByAlias(q));
+  var byA = CHAR_DB.filter(function(c){ return aNames.has(c.name) && byN.indexOf(c)<0; });
+  descSugg = byN.concat(byA).slice(0, 10);
+  if (!descSugg.length) { sg.style.display='none'; return; }
+  descAIdx = -1;
+  sg.style.display = 'block';
+  sg.innerHTML = descSugg.map(function(c, i){
+    var already = descWrong.indexOf(c.name) >= 0;
+    var init = c.name.split(' ').map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase();
+    var col = avatarColor(c);
+    var alias = (ALIASES[c.name]||[]).find(function(a){ return a.toLowerCase().includes(q); });
+    return '<div class="suggestion-item' + (already ? ' already-guessed' : '') + '" onclick="dPick(' + i + ')"'
+      + ' style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:10px;font-size:0.95rem;' + (already ? 'opacity:0.4;pointer-events:none;' : '') + '">'
+      + '<div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.78rem;flex-shrink:0;color:white;background:linear-gradient(135deg,' + col + ',' + col + '88);border:2px solid rgba(255,255,255,0.2)">' + init + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:1px"><span>' + c.name + '</span>' + (alias ? '<small style="color:#94a3b8;font-size:0.78rem">aka ' + alias + '</small>' : '') + '</div>'
+      + (already ? '<small style="color:#6b7280;margin-left:auto">Already guessed</small>' : '')
+      + '</div>';
+  }).join('');
+}
+window.dSrch=dSrch;
+
+function dPick(i){
+  var c = descSugg[i]; if (!c) return;
+  document.getElementById('desc-search').value = c.name;
+  document.getElementById('desc-sugg').style.display = 'none';
+  dSubmit(c.name);
+}
+window.dPick=dPick;
+
+function dKey(e){
+  var sg = document.getElementById('desc-sugg');
+  var items = sg ? sg.querySelectorAll('.suggestion-item:not(.already-guessed)') : [];
+  if (e.key==='ArrowDown') { e.preventDefault(); descAIdx=Math.min(descAIdx+1,items.length-1); items.forEach(function(el,i){ el.style.background=i===descAIdx?'rgba(240,192,64,0.12)':''; }); }
+  else if (e.key==='ArrowUp') { e.preventDefault(); descAIdx=Math.max(descAIdx-1,0); items.forEach(function(el,i){ el.style.background=i===descAIdx?'rgba(240,192,64,0.12)':''; }); }
+  else if (e.key==='Enter') { e.preventDefault(); if(descAIdx>=0&&descSugg[descAIdx]) dPick(descAIdx); else { var v=document.getElementById('desc-search').value.trim(); if(v) dSubmit(v); } }
+  else if (e.key==='Escape') { if(sg) sg.style.display='none'; }
+}
+window.dKey=dKey;
+
+function buildResultCard(won) {
+  var col = avatarColor(descTarget);
+  var init = descTarget.name.split(' ').map(function(w){ return w[0]; }).join('').slice(0,2).toUpperCase();
+  var bg = won ? 'linear-gradient(135deg,rgba(22,101,52,0.3),rgba(21,128,61,0.2))' : 'linear-gradient(135deg,rgba(127,29,29,0.3),rgba(153,17,17,0.2))';
+  var border = won ? 'var(--green)' : 'var(--red)';
+  var title = won ? ('🏆 You got it! ' + (descWrong.length===0 ? '(First try!!)' : '')) : '☠️ It was...';
+  var subtitle = won
+    ? ('Guessed with <strong style="color:var(--gold)">' + descWrong.length + '</strong> wrong guess' + (descWrong.length===1?'':'es') + '!')
+    : '';
+  var btnLabel = won ? '🔍 Next Character' : '🔍 Try Again';
+  return '<div style="display:block;text-align:center;padding:2rem;margin-top:1rem;border-radius:16px;background:' + bg + ';border:2px solid ' + border + '">'
+    + '<h2 style="font-family:Cinzel,serif;font-size:1.8rem;margin-bottom:0.5rem;color:var(--gold)">' + title + '</h2>'
+    + (subtitle ? '<p style="color:#94a3b8;margin-bottom:1rem">' + subtitle + '</p>' : '')
+    + '<div style="display:inline-flex;align-items:center;gap:14px;background:var(--card);border:2px solid var(--gold);border-radius:12px;padding:14px 20px;margin:0.8rem auto">'
+    + '<div style="background:linear-gradient(135deg,' + col + ',' + col + '99);width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:900;border:2px solid var(--gold);flex-shrink:0;color:white">' + init + '</div>'
+    + '<div><h3 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.1rem">' + descTarget.name + '</h3>'
+    + '<p style="color:#94a3b8;font-size:0.82rem;margin-top:2px">' + descTarget.affiliation + '</p></div></div><br>'
+    + '<button class="btn-new-game" onclick="initDescMode()" style="margin-top:1rem">' + btnLabel + '</button>'
+    + '</div>';
+}
+
+function dSubmit(name){
+  if (descOver) return;
+  var canon = ALIAS_LOOKUP[name.toLowerCase()];
+  var lname = (canon || name).toLowerCase();
+  var gc = CHAR_DB.find(function(c){ return c.name.toLowerCase()===lname || c.name.toLowerCase()===name.toLowerCase(); });
+  if (!gc) {
+    var inp = document.getElementById('desc-search');
+    if (inp) { inp.style.borderColor='var(--red)'; inp.placeholder='Not found — pick from list!'; setTimeout(function(){ inp.style.borderColor=''; inp.placeholder='Type a character name to guess...'; }, 1600); }
+    return;
+  }
+  if (descWrong.indexOf(gc.name) >= 0) return;
+  if (gc.name === descTarget.name) {
+    descOver = true; descCluesRevealed = CLUES.length; renderDesc();
+    var rEl = document.getElementById('desc-result');
+    if (rEl) rEl.innerHTML = buildResultCard(true);
+  } else {
+    descWrong.push(gc.name);
+    if (descCluesRevealed < CLUES.length) descCluesRevealed++;
+    renderDesc();
+    var inp2 = document.getElementById('desc-search');
+    if (inp2) { inp2.style.borderColor='var(--red)'; setTimeout(function(){ inp2.style.borderColor=''; }, 700); }
+  }
+}
+window.dSubmit=dSubmit;
+
+function dGiveUp(){
+  if (descOver) return;
+  if (!descWrong.length) {
+    var inp = document.getElementById('desc-search');
+    if (inp) { inp.style.borderColor='var(--red)'; inp.placeholder='Make at least one guess first!'; setTimeout(function(){ inp.style.borderColor=''; inp.placeholder='Type a character name to guess...'; }, 1600); }
+    return;
+  }
+  descOver = true; descCluesRevealed = CLUES.length; renderDesc();
+  var rEl = document.getElementById('desc-result');
+  if (rEl) rEl.innerHTML = buildResultCard(false);
+}
+window.dGiveUp=dGiveUp;
+
+// ── 
