@@ -1540,25 +1540,24 @@ function renderSil(){
   var col=avatarColor(silTarget);
   var init=silTarget.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
   var blurF=silOver?SIL_BLURS[4]:SIL_BLURS[Math.min(silRevealed,4)];
-  // SVG person silhouette - color reveals progressively
+  // SVG person silhouette
   var silFill, silGlow, silLabel;
   if (silOver || silRevealed >= 4) {
-    silFill = col; silGlow = 'drop-shadow(0 0 16px '+col+')'; silLabel = init;
+    silFill = col; silGlow = 'drop-shadow(0 0 20px '+col+') drop-shadow(0 4px 12px rgba(0,0,0,0.8))'; silLabel = init;
   } else if (silRevealed === 3) {
-    silFill = col+'aa'; silGlow = 'drop-shadow(0 0 8px '+col+')'; silLabel = '';
+    silFill = col+'66'; silGlow = 'drop-shadow(0 0 8px '+col+'88)'; silLabel = '';
   } else if (silRevealed === 2) {
-    silFill = '#2a2a2a'; silGlow = 'none'; silLabel = '';
+    silFill = '#1a1a1a'; silGlow = 'drop-shadow(0 4px 12px rgba(0,0,0,0.9))'; silLabel = '';
   } else {
-    silFill = '#000'; silGlow = 'none'; silLabel = '';
+    silFill = '#000'; silGlow = 'drop-shadow(0 4px 12px rgba(0,0,0,0.9))'; silLabel = '';
   }
-  var avatarHtml = '<div style="margin:0 auto 1.5rem;position:relative;display:inline-block">'
-    + '<svg width="140" height="200" viewBox="0 0 100 145" xmlns="http://www.w3.org/2000/svg" style="filter:'+silGlow+';transition:filter 0.6s,fill 0.6s">'
-    + '<circle cx="50" cy="22" r="18" fill="'+silFill+'"/>'
-    + '<path d="M18 62 Q22 44 50 44 Q78 44 82 62 L88 108 H68 L64 145 H36 L32 108 H12 Z" fill="'+silFill+'"/>'
-    + '<path d="M12 108 L2 90 Q0 80 8 76 L18 62" fill="'+silFill+'"/>'
-    + '<path d="M88 108 L98 90 Q100 80 92 76 L82 62" fill="'+silFill+'"/>'
-    + '</svg>'
-    + (silLabel ? '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:Cinzel,serif;font-size:1.4rem;font-weight:900;color:white;text-shadow:0 2px 8px rgba(0,0,0,0.9)">'+silLabel+'</div>' : '')
+  var silPaths = '<circle cx="50" cy="22" r="18" fill="'+silFill+'"/>'
+    + '<path d="M38 38 L38 42 Q30 48 22 62 L20 108 L35 108 L37 140 L63 140 L65 108 L80 108 L78 62 Q70 48 62 42 L62 38 Z" fill="'+silFill+'"/>'
+    + '<path d="M22 62 L8 95 Q6 102 12 104 L20 108 L22 62" fill="'+silFill+'"/>'
+    + '<path d="M78 62 L92 95 Q94 102 88 104 L80 108 L78 62" fill="'+silFill+'"/>';
+  var avatarHtml = '<div style="margin:0 auto 1.5rem;position:relative;display:inline-block;filter:'+silGlow+';transition:filter 0.6s">'
+    + '<svg width="150" height="210" viewBox="0 0 100 145" xmlns="http://www.w3.org/2000/svg">'+silPaths+'</svg>'
+    + (silLabel ? '<div style="position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-family:Cinzel,serif;font-size:1.5rem;font-weight:900;color:white;text-shadow:0 2px 8px rgba(0,0,0,0.9)">'+silLabel+'</div>' : '')
     + '</div>';
   var cluesHtml=SIL_CLUES.map(function(clue,i){
     var rev=i<silRevealed||silOver;
