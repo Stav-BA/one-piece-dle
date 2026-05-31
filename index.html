@@ -1527,7 +1527,7 @@ var SIL_CLUES=[
   {label:'First Arc',icon:'📖',fmt:function(c){return c.arc;}},
   {label:'Affiliation',icon:'🏴',fmt:function(c){return c.affiliation;}},
 ];
-var SIL_BLURS=['blur(0px) brightness(0) contrast(0)','blur(0px) brightness(0) contrast(0)','blur(4px) brightness(0.5) grayscale(1)','blur(2px) brightness(0.8)','blur(0px) brightness(1)'];
+var SIL_BLURS=['#000000','#000000','#2d2d2d','#888888',''];
 
 function initSilMode(){
   silTarget=CHAR_DB[Math.floor(Math.random()*CHAR_DB.length)];
@@ -1540,11 +1540,10 @@ function renderSil(){
   var col=avatarColor(silTarget);
   var init=silTarget.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
   var blurF=silOver?SIL_BLURS[4]:SIL_BLURS[Math.min(silRevealed,4)];
-  var silBg = silOver||silRevealed>=2 ? 'linear-gradient(135deg,'+col+','+col+'88)' : '#1a1a2e';
-  var silContent = silOver||silRevealed>=4 ? init : '?';
-  var silStyle = silOver ? '' : (silRevealed<2 ? 'filter:brightness(0);' : silRevealed<3 ? 'filter:grayscale(1) brightness(0.6);' : 'filter:grayscale(0) brightness(0.85);');
-  var avatarHtml='<div class="sil-avatar" style="background:'+silBg+';'+silStyle+'">'
-    +'<span style="color:'+(silRevealed<2&&!silOver?'rgba(255,255,255,0.9)':'white')+';text-shadow:0 2px 8px rgba(0,0,0,0.8)">'+silContent+'</span>'
+  var silBg = (silOver||silRevealed>=4) ? 'linear-gradient(135deg,'+col+','+col+'88)' : SIL_BLURS[Math.min(silRevealed,4)];
+  var silContent = (silOver||silRevealed>=4) ? init : '?';
+  var avatarHtml='<div class="sil-avatar" style="background:'+silBg+';border-color:rgba(240,192,64,0.8)">'
+    +'<span style="font-size:'+(silRevealed>=4||silOver?'2rem':'2.8rem')+';color:white;text-shadow:0 2px 12px rgba(0,0,0,1)">'+silContent+'</span>'
     +'</div>';
   var cluesHtml=SIL_CLUES.map(function(clue,i){
     var rev=i<silRevealed||silOver;
