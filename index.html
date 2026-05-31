@@ -1612,16 +1612,27 @@ function renderSil(){
       var img2 = new Image();
       img2.crossOrigin='anonymous';
       img2.onload=function(){
-        // Fill dark background
+        // First pass: remove white background via offscreen canvas
+        var tmp=document.createElement('canvas');
+        tmp.width=img2.width; tmp.height=img2.height;
+        var tctx=tmp.getContext('2d');
+        tctx.drawImage(img2,0,0);
+        var pd=tctx.getImageData(0,0,img2.width,img2.height);
+        var d=pd.data;
+        for(var i=0;i<d.length;i+=4){
+          var r=d[i],g=d[i+1],b=d[i+2];
+          // Near-white pixels -> transparent
+          if(r>200&&g>200&&b>200){d[i+3]=Math.max(0,255-Math.round((r+g+b-600)/1.8));}
+        }
+        tctx.putImageData(pd,0,0);
+        // Now draw on dark background with filter
         ctx.fillStyle='#0d1426';
         ctx.fillRect(0,0,180,240);
-        // Apply filter via CSS on a temp offscreen approach - just draw image with global filter
         ctx.filter = silFilterLocal;
-        // Scale to fit, center
         var scale=Math.min(180/img2.width,240/img2.height);
         var w=img2.width*scale, h=img2.height*scale;
         var x=(180-w)/2, y=(240-h)/2;
-        ctx.drawImage(img2,x,y,w,h);
+        ctx.drawImage(tmp,x,y,w,h);
         if(silOverLocal){
           ctx.filter='none';
           ctx.font='bold 16px Cinzel';
