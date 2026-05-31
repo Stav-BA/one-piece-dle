@@ -1559,14 +1559,12 @@ function renderSil(){
   // Build avatar — real image if available, SVG fallback otherwise
   var avatarHtml;
   if(silImgUrl){
-    var imgFilter;
-    if(silOver)                 imgFilter='none';
-    else if(silRevealed>=3)     imgFilter='brightness(0.45) saturate(0.4)';
-    else if(silRevealed>=2)     imgFilter='brightness(0.2) saturate(0)';
-    else                        imgFilter='brightness(0)';
-    avatarHtml='<div style="margin:0 auto 1.5rem;position:relative;display:inline-block">'
-      +'<img src="'+silImgUrl+'" alt="?" style="height:220px;max-width:200px;object-fit:contain;filter:'+imgFilter+';transition:filter 0.8s;display:block">'
-      +(silOver?'<div style="position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);font-family:Cinzel,serif;font-size:1.1rem;font-weight:900;color:var(--gold);white-space:nowrap">'+silTarget.name+'</div>':'')
+    // Overlay opacity: 1=fully hidden (black), 0=fully revealed
+    var overlayOpacity = silOver ? 0 : [1, 0.82, 0.6, 0.35, 0][Math.min(silRevealed,4)];
+    avatarHtml='<div style="margin:0 auto 1.5rem;position:relative;display:inline-block;border-radius:8px;overflow:hidden">'
+      +'<img src="'+silImgUrl+'" alt="?" crossorigin="anonymous" style="height:220px;max-width:200px;object-fit:contain;display:block;background:#fff">'
+      +'<div style="position:absolute;top:0;left:0;right:0;bottom:0;background:#000;opacity:'+overlayOpacity+';transition:opacity 0.7s;pointer-events:none"></div>'
+      +(silOver?'<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:8px;text-align:center;font-family:Cinzel,serif;font-size:1rem;font-weight:900;color:var(--gold)">'+silTarget.name+'</div>':'')
       +'</div>';
   } else {
     // SVG body fallback while image loads (or if API fails)
