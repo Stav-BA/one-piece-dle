@@ -579,11 +579,13 @@ function initGame(){
   target=pickRandom(); guesses=[]; gameOver=false; activeIdx=-1;
   document.getElementById('guess-grid').innerHTML='<div class="empty-state"><span class="skull">☠️</span>Make your first guess to see the hints!</div>';
   const rs=document.getElementById('result-screen');
-  rs.className=''; rs.style.display='none';
+  rs.className=''; rs.innerHTML=''; rs.style.cssText='display:none';
   const inp=document.getElementById('search-input');
   inp.value=''; inp.disabled=false; inp.placeholder='Type a character name to guess...';
   document.getElementById('guess-counter').textContent='0 guesses';
   hideSuggestions();
+  window.scrollTo({top:0, behavior:'smooth'});
+  inp.focus();
 }
 
 // ── AUTOCOMPLETE ──────────────────────────────────────
@@ -856,10 +858,4 @@ function endGame(won,cnt){
   }
 }
 
-// ── BOOT ──────────────────────────────────────────────
-initGame();
-loadAllCharImages();
-
-</script>
-</body>
-</html>
+// ── BOOT ─────────────────────────────────────
