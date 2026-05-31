@@ -1597,10 +1597,46 @@ function renderSil(){
       'blur(0px)  brightness(1)    grayscale(0)'
     ];
     var imgFilter = silOver ? silFilters[4] : silFilters[Math.min(silRevealed,4)];
-    avatarHtml='<div style="margin:0 auto 1.5rem;position:relative;display:inline-block;border-radius:8px;overflow:hidden;background:#fff">'
-      +'<img src="'+silImgUrl+'" alt="?" style="height:220px;max-width:200px;object-fit:contain;display:block;filter:'+imgFilter+';transition:filter 0.8s">'
-      +(silOver?'<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.85));padding:8px;text-align:center;font-family:Cinzel,serif;font-size:1rem;font-weight:900;color:var(--gold)">'+silTarget.name+'</div>':'')
+    // Use canvas to make proper B&W silhouette from the image
+    avatarHtml='<div style="margin:0 auto 1.5rem;position:relative;display:inline-block">'
+      +'<canvas id="sil-canvas" width="180" height="240" style="display:block;border-radius:8px"></canvas>'
+      +(silOver?'<div style="position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);font-family:Cinzel,serif;font-size:1rem;font-weight:900;color:var(--gold);white-space:nowrap;text-shadow:0 2px 6px rgba(0,0,0,0.9)">'+silTarget.name+'</div>':'')
       +'</div>';
+    // Draw silhouette on canvas after render
+    var silFilterLocal = imgFilter;
+    var silOverLocal = silOver;
+    setTimeout(function(){
+      var canvas = document.getElementById('sil-canvas');
+      if(!canvas)return;
+      var ctx = canvas.getContext('2d');
+      var img2 = new Image();
+      img2.crossOrigin='anonymous';
+      img2.onload=function(){
+        // Fill dark background
+        ctx.fillStyle='#0d1426';
+        ctx.fillRect(0,0,180,240);
+        // Apply filter via CSS on a temp offscreen approach - just draw image with global filter
+        ctx.filter = silFilterLocal;
+        // Scale to fit, center
+        var scale=Math.min(180/img2.width,240/img2.height);
+        var w=img2.width*scale, h=img2.height*scale;
+        var x=(180-w)/2, y=(240-h)/2;
+        ctx.drawImage(img2,x,y,w,h);
+        if(silOverLocal){
+          ctx.filter='none';
+          ctx.font='bold 16px Cinzel';
+          ctx.fillStyle='rgba(240,192,64,0.95)';
+          ctx.textAlign='center';
+          ctx.fillText(silTarget.name,90,228);
+        }
+      };
+      img2.onerror=function(){
+        ctx.fillStyle='#1e293b';ctx.fillRect(0,0,180,240);
+        ctx.fillStyle='#94a3b8';ctx.font='48px sans-serif';ctx.textAlign='center';
+        ctx.fillText('?',90,140);
+      };
+      img2.src=silImgUrl;
+    },50);
   } else {
     // SVG body fallback while image loads (or if API fails)
     var silFill=(silOver||silRevealed>=4)?col:silRevealed>=2?'#1a1a1a':'#000';
