@@ -1540,11 +1540,26 @@ function renderSil(){
   var col=avatarColor(silTarget);
   var init=silTarget.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
   var blurF=silOver?SIL_BLURS[4]:SIL_BLURS[Math.min(silRevealed,4)];
-  var silBg = (silOver||silRevealed>=4) ? 'linear-gradient(135deg,'+col+','+col+'88)' : SIL_BLURS[Math.min(silRevealed,4)];
-  var silContent = (silOver||silRevealed>=4) ? init : '?';
-  var avatarHtml='<div class="sil-avatar" style="background:'+silBg+';border-color:rgba(240,192,64,0.8)">'
-    +'<span style="font-size:3rem;font-weight:900;color:'+(silOver||silRevealed>=4?'white':'rgba(255,255,255,0.9)')+'">'+silContent+'</span>'
-    +'</div>';
+  // SVG person silhouette - color reveals progressively
+  var silFill, silGlow, silLabel;
+  if (silOver || silRevealed >= 4) {
+    silFill = col; silGlow = 'drop-shadow(0 0 16px '+col+')'; silLabel = init;
+  } else if (silRevealed === 3) {
+    silFill = col+'aa'; silGlow = 'drop-shadow(0 0 8px '+col+')'; silLabel = '';
+  } else if (silRevealed === 2) {
+    silFill = '#2a2a2a'; silGlow = 'none'; silLabel = '';
+  } else {
+    silFill = '#000'; silGlow = 'none'; silLabel = '';
+  }
+  var avatarHtml = '<div style="margin:0 auto 1.5rem;position:relative;display:inline-block">'
+    + '<svg width="140" height="200" viewBox="0 0 100 145" xmlns="http://www.w3.org/2000/svg" style="filter:'+silGlow+';transition:filter 0.6s,fill 0.6s">'
+    + '<circle cx="50" cy="22" r="18" fill="'+silFill+'"/>'
+    + '<path d="M18 62 Q22 44 50 44 Q78 44 82 62 L88 108 H68 L64 145 H36 L32 108 H12 Z" fill="'+silFill+'"/>'
+    + '<path d="M12 108 L2 90 Q0 80 8 76 L18 62" fill="'+silFill+'"/>'
+    + '<path d="M88 108 L98 90 Q100 80 92 76 L82 62" fill="'+silFill+'"/>'
+    + '</svg>'
+    + (silLabel ? '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:Cinzel,serif;font-size:1.4rem;font-weight:900;color:white;text-shadow:0 2px 8px rgba(0,0,0,0.9)">'+silLabel+'</div>' : '')
+    + '</div>';
   var cluesHtml=SIL_CLUES.map(function(clue,i){
     var rev=i<silRevealed||silOver;
     return '<div class="sil-clue'+(rev?'':' locked')+'">'
