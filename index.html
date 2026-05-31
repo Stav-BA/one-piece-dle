@@ -1520,7 +1520,7 @@ window.stsGiveUp=stsGiveUp;
 // =============================================================
 // SILHOUETTE MODE
 // =============================================================
-var silTarget=null,silWrong=[],silOver=false,silSugg=[],silAIdx=-1,silRevealed=0;
+var silTarget=null,silWrong=[],silOver=false,silSugg=[],silAIdx=-1,silRevealed=0,silImgUrl=null;
 var SIL_CLUES=[
   {label:'Sea of Origin',icon:'🗺️',fmt:function(c){return c.sea;}},
   {label:'Gender',icon:'👤',fmt:function(c){return c.gender;}},
@@ -1531,7 +1531,23 @@ var SIL_BLURS=['#000000','#000000','#2d2d2d','#888888',''];
 
 function initSilMode(){
   silTarget=CHAR_DB[Math.floor(Math.random()*CHAR_DB.length)];
-  silWrong=[];silOver=false;silRevealed=0;renderSil();
+  silWrong=[];silOver=false;silRevealed=0;silImgUrl=null;
+  renderSil();
+  // Fetch real character image from Jikan API
+  var q=encodeURIComponent(silTarget.name.split(' ').slice(0,2).join(' '));
+  fetch('https://api.jikan.moe/v4/characters?q='+q+'&limit=5')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data.data||!data.data.length)return;
+      // Find best match by name
+      var match=data.data.find(function(c){return c.name.toLowerCase().includes(silTarget.name.split(' ')[0].toLowerCase());});
+      var entry=match||data.data[0];
+      if(entry&&entry.images&&entry.images.jpg){
+        silImgUrl=entry.images.jpg.image_url;
+        renderSil();
+      }
+    })
+    .catch(function(){});
 }
 window.initSilMode=initSilMode;
 
@@ -1539,26 +1555,34 @@ function renderSil(){
   var el=document.getElementById('silhouette-mode');
   var col=avatarColor(silTarget);
   var init=silTarget.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-  var blurF=silOver?SIL_BLURS[4]:SIL_BLURS[Math.min(silRevealed,4)];
-  // SVG person silhouette
-  var silFill, silGlow, silLabel;
-  if (silOver || silRevealed >= 4) {
-    silFill = col; silGlow = 'drop-shadow(0 0 20px '+col+') drop-shadow(0 4px 12px rgba(0,0,0,0.8))'; silLabel = init;
-  } else if (silRevealed === 3) {
-    silFill = col+'66'; silGlow = 'drop-shadow(0 0 8px '+col+'88)'; silLabel = '';
-  } else if (silRevealed === 2) {
-    silFill = '#1a1a1a'; silGlow = 'drop-shadow(0 4px 12px rgba(0,0,0,0.9))'; silLabel = '';
+
+  // Build avatar — real image if available, SVG fallback otherwise
+  var avatarHtml;
+  if(silImgUrl){
+    var imgFilter;
+    if(silOver)                 imgFilter='none';
+    else if(silRevealed>=3)     imgFilter='brightness(0.45) saturate(0.4)';
+    else if(silRevealed>=2)     imgFilter='brightness(0.2) saturate(0)';
+    else                        imgFilter='brightness(0)';
+    avatarHtml='<div style="margin:0 auto 1.5rem;position:relative;display:inline-block">'
+      +'<img src="'+silImgUrl+'" alt="?" style="height:220px;max-width:200px;object-fit:contain;filter:'+imgFilter+';transition:filter 0.8s;display:block">'
+      +(silOver?'<div style="position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);font-family:Cinzel,serif;font-size:1.1rem;font-weight:900;color:var(--gold);white-space:nowrap">'+silTarget.name+'</div>':'')
+      +'</div>';
   } else {
-    silFill = '#000'; silGlow = 'drop-shadow(0 4px 12px rgba(0,0,0,0.9))'; silLabel = '';
+    // SVG body fallback while image loads (or if API fails)
+    var silFill=(silOver||silRevealed>=4)?col:silRevealed>=2?'#1a1a1a':'#000';
+    var silGlow=(silOver||silRevealed>=4)?'drop-shadow(0 0 20px '+col+')':'drop-shadow(0 4px 12px rgba(0,0,0,0.9))';
+    var silPaths='<circle cx="50" cy="22" r="18" fill="'+silFill+'"/>'
+      +'<path d="M38 38 L38 42 Q30 48 22 62 L20 108 L35 108 L37 140 L63 140 L65 108 L80 108 L78 62 Q70 48 62 42 L62 38 Z" fill="'+silFill+'"/>'
+      +'<path d="M22 62 L8 95 Q6 102 12 104 L20 108 L22 62" fill="'+silFill+'"/>'
+      +'<path d="M78 62 L92 95 Q94 102 88 104 L80 108 L78 62" fill="'+silFill+'"/>';
+    avatarHtml='<div style="margin:0 auto 1.5rem;position:relative;display:inline-block;filter:'+silGlow+'">'
+      +'<svg width="150" height="210" viewBox="0 0 100 145" xmlns="http://www.w3.org/2000/svg">'+silPaths+'</svg>'
+      +(silOver?'<div style="position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-family:Cinzel,serif;font-size:1.5rem;font-weight:900;color:white">'+init+'</div>':'')
+      +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#64748b;font-size:0.75rem;margin-top:60px">Loading...</div>'
+      +'</div>';
   }
-  var silPaths = '<circle cx="50" cy="22" r="18" fill="'+silFill+'"/>'
-    + '<path d="M38 38 L38 42 Q30 48 22 62 L20 108 L35 108 L37 140 L63 140 L65 108 L80 108 L78 62 Q70 48 62 42 L62 38 Z" fill="'+silFill+'"/>'
-    + '<path d="M22 62 L8 95 Q6 102 12 104 L20 108 L22 62" fill="'+silFill+'"/>'
-    + '<path d="M78 62 L92 95 Q94 102 88 104 L80 108 L78 62" fill="'+silFill+'"/>';
-  var avatarHtml = '<div style="margin:0 auto 1.5rem;position:relative;display:inline-block;filter:'+silGlow+';transition:filter 0.6s">'
-    + '<svg width="150" height="210" viewBox="0 0 100 145" xmlns="http://www.w3.org/2000/svg">'+silPaths+'</svg>'
-    + (silLabel ? '<div style="position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-family:Cinzel,serif;font-size:1.5rem;font-weight:900;color:white;text-shadow:0 2px 8px rgba(0,0,0,0.9)">'+silLabel+'</div>' : '')
-    + '</div>';
+
   var cluesHtml=SIL_CLUES.map(function(clue,i){
     var rev=i<silRevealed||silOver;
     return '<div class="sil-clue'+(rev?'':' locked')+'">'
@@ -1566,14 +1590,17 @@ function renderSil(){
       +'<div><div style="font-weight:700;color:var(--gold);font-size:0.82rem;font-family:Cinzel,serif">'+(rev?clue.label:'Locked')+'</div>'
       +'<div style="color:'+(rev?'var(--white)':'#4b5563')+';font-size:0.95rem">'+(rev?clue.fmt(silTarget):'Wrong guess to reveal')+'</div></div></div>';
   }).join('');
+
   var wrongHtml=silWrong.length?'<div class="desc-wrong-guesses"><h4>Wrong guesses ('+silWrong.length+')</h4><div class="desc-wrong-list">'+silWrong.map(function(n){return '<span class="wrong-tag">'+n+'</span>';}).join('')+'</div></div>':'';
-  var hint=!silOver?'<p class="clue-reveal-hint">Each wrong guess unblurs the avatar & reveals a clue ('+silRevealed+'/'+SIL_CLUES.length+')</p>':'';
+  var hint=!silOver?'<p class="clue-reveal-hint">Each wrong guess unblurs the shadow & reveals a clue ('+silRevealed+'/'+SIL_CLUES.length+')</p>':'';
   var inputHtml=silOver?'':buildModeSearch('sil-search','silSrch','silKey','silPick','silGiveUp','sil-sugg');
+
   el.innerHTML='<div style="max-width:700px;margin:0 auto 1rem;text-align:center">'
-    +'<h2 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem">👤 Who is this silhouette?</h2>'
-    +'<p style="color:#94a3b8;font-size:0.88rem">Identify the character — wrong guesses reveal more clues</p>'
+    +'<h2 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem">👤 Who is this character?</h2>'
+    +'<p style="color:#94a3b8;font-size:0.88rem">Identify the character from their shadow — wrong guesses reveal more clues</p>'
     +'</div>'
-    +'<div class="silhouette-wrap" style="text-align:center;padding:2rem 1.5rem 1.5rem;background:rgba(13,20,38,0.95);border:2px solid rgba(240,192,64,0.3);border-radius:16px;max-width:700px;margin:0 auto 1rem">'+avatarHtml+'<div class="sil-clue-list" style="margin-top:1.5rem">'+cluesHtml+'</div></div>'
+    +'<div class="silhouette-wrap" style="text-align:center;padding:2rem 1.5rem 1.5rem;background:rgba(13,20,38,0.95);border:2px solid rgba(240,192,64,0.3);border-radius:16px;max-width:700px;margin:0 auto 1.5rem">'+avatarHtml
+    +'<div class="sil-clue-list" style="margin-top:1.5rem">'+cluesHtml+'</div></div>'
     +hint+wrongHtml+inputHtml+'<div id="sil-result"></div>';
   if(!silOver){var inp=document.getElementById('sil-search');if(inp)inp.focus();}
 }
