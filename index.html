@@ -2008,5 +2008,158 @@ window.initGame=initGame;
 window.selectSuggestion=selectSuggestion;
 window.submitGuess=submitGuess;
 window.giveUp=giveUp;
+// =============================================================
+// switchMode — all 6 modes
+// =============================================================
+function switchMode(mode){
+  var allModes=['classic','desc','stats','silhouette','crew','ability'];
+  allModes.forEach(function(m){
+    var el=document.getElementById(m+'-mode');
+    var btn=document.getElementById('btn-'+m);
+    if(!el||!btn)return;
+    if(m===mode){el.classList.add('active');btn.classList.add('active');}
+    else{el.classList.remove('active');btn.classList.remove('active');}
+  });
+  var cl=document.getElementById('classic-mode');
+  if(mode==='classic')cl.classList.remove('hidden');
+  else cl.classList.add('hidden');
+  if(mode==='desc'&&!descTarget)initDescMode();
+  if(mode==='stats'&&!statsTarget)initStatsMode();
+  if(mode==='silhouette'&&!silTarget)initSilMode();
+  if(mode==='crew'&&!crewTarget)initCrewMode();
+  if(mode==='ability'&&!abilityTarget)initAbilityMode();
+}
+window.switchMode=switchMode;
 
-// ── 
+// =============================================================
+// STATS MODE
+// =============================================================
+var statsTarget=null,statsWrong=[],statsOver=false,statsSugg=[],statsAIdx=-1,statsRevealed=1;
+var STATS_ROWS=[
+  {key:'bounty',label:'Bounty',icon:'💰',fmt:function(c){return fmtBounty(c.bounty)+' Berries';}},
+  {key:'fruit',label:'Devil Fruit',icon:'🍎',fmt:function(c){return c.devilFruitType==='None'?'No Devil Fruit':c.devilFruitType;}},
+  {key:'sea',label:'Sea of Origin',icon:'🗺️',fmt:function(c){return c.sea;}},
+  {key:'haki',label:'Haki',icon:'⚡',fmt:function(c){return c.haki||'Unknown';}},
+  {key:'affil',label:'Affiliation',icon:'🏴',fmt:function(c){return c.affiliation;}},
+];
+function initStatsMode(){
+  var pool=CHAR_DB.filter(function(c){return c.bounty>0;});
+  statsTarget=pool[Math.floor(Math.random()*pool.length)];
+  statsWrong=[];statsOver=false;statsRevealed=1;renderStats();
+}
+window.initStatsMode=initStatsMode;
+function renderStats(){
+  var el=document.getElementById('stats-mode');
+  var rowsHtml=STATS_ROWS.map(function(row,i){
+    var rev=i<statsRevealed;
+    return '<div class="stat-row'+(rev?'':' locked')+'">'
+      +'<div class="stat-icon">'+(rev?row.icon:'🔒')+'</div>'
+      +'<div style="flex:1"><div class="stat-label">'+(rev?row.label:'Locked')+'</div>'
+      +'<div class="stat-val'+(rev?'':' blur')+'">'+(rev?row.fmt(statsTarget):'Wrong guess to reveal')+'</div></div></div>';
+  }).join('');
+  var wrongHtml=statsWrong.length?'<div class="desc-wrong-guesses"><h4>Wrong guesses ('+statsWrong.length+')</h4><div class="desc-wrong-list">'+statsWrong.map(function(n){return '<span class="wrong-tag">'+n+'</span>';}).join('')+'</div></div>':'';
+  var hint=!statsOver?'<p class="clue-reveal-hint">Each wrong guess reveals the next stat ('+statsRevealed+'/'+STATS_ROWS.length+' shown)</p>':'';
+  var inputHtml=statsOver?'':buildModeSearch('stats-search','stsSrch','stsKey','stsPick','stsGiveUp','stats-sugg');
+  el.innerHTML='<div style="max-width:700px;margin:0 auto 1rem;text-align:center"><h2 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem">🎯 Who has these stats?</h2><p style="color:#94a3b8;font-size:0.88rem">Use the stats to identify the mystery One Piece character</p></div><div class="stat-reveal">'+rowsHtml+'</div>'+hint+wrongHtml+inputHtml+'<div id="stats-result"></div>';
+  if(!statsOver){var inp=document.getElementById('stats-search');if(inp)inp.focus();}
+}
+function stsSrch(q){
+  q=q.trim().toLowerCase();var sg=document.getElementById('stats-sugg');
+  if(!q){sg.style.display='none';statsSugg=[];return;}
+  var byN=CHAR_DB.filter(function(c){return c.bounty>0&&c.name.toLowerCase().includes(q);});
+  var aNames=new Set(searchByAlias(q));
+  var byA=CHAR_DB.filter(function(c){return c.bounty>0&&aNames.has(c.name)&&byN.indexOf(c)<0;});
+  statsSugg=byN.concat(byA).slice(0,10);if(!statsSugg.length){sg.style.display='none';return;}
+  statsAIdx=-1;sg.style.display='block';
+  sg.innerHTML=statsSugg.map(function(c,i){var already=statsWrong.indexOf(c.name)>=0;var init=c.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();var col=avatarColor(c);return '<div class="suggestion-item'+(already?' already-guessed':'')+'" onclick="stsPick('+i+')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:10px;font-size:0.95rem;'+(already?'opacity:0.4;pointer-events:none;':'')+'"><div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.78rem;flex-shrink:0;color:white;background:linear-gradient(135deg,'+col+','+col+'88)">'+init+'</div><span>'+c.name+'</span>'+(already?'<small style="color:#6b7280;margin-left:auto">Already guessed</small>':'')+'</div>';}).join('');
+}
+window.stsSrch=stsSrch;
+function stsPick(i){var c=statsSugg[i];if(!c)return;document.getElementById('stats-search').value=c.name;document.getElementById('stats-sugg').style.display='none';stsSubmit(c.name);}
+window.stsPick=stsPick;
+function stsKey(e){var sg=document.getElementById('stats-sugg');var items=sg?sg.querySelectorAll('.suggestion-item:not(.already-guessed)'):[];if(e.key==='ArrowDown'){e.preventDefault();statsAIdx=Math.min(statsAIdx+1,items.length-1);items.forEach(function(el,i){el.style.background=i===statsAIdx?'rgba(240,192,64,0.12)':'';}); }else if(e.key==='ArrowUp'){e.preventDefault();statsAIdx=Math.max(statsAIdx-1,0);items.forEach(function(el,i){el.style.background=i===statsAIdx?'rgba(240,192,64,0.12)':'';}); }else if(e.key==='Enter'){e.preventDefault();if(statsAIdx>=0&&statsSugg[statsAIdx])stsPick(statsAIdx);else{var v=document.getElementById('stats-search').value.trim();if(v)stsSubmit(v);}}else if(e.key==='Escape'){if(sg)sg.style.display='none';}}
+window.stsKey=stsKey;
+function stsSubmit(name){if(statsOver)return;var canon=ALIAS_LOOKUP[name.toLowerCase()];var lname=(canon||name).toLowerCase();var gc=CHAR_DB.find(function(c){return c.name.toLowerCase()===lname||c.name.toLowerCase()===name.toLowerCase();});if(!gc){var inp=document.getElementById('stats-search');if(inp){inp.style.borderColor='var(--red)';inp.placeholder='Not found!';setTimeout(function(){inp.style.borderColor='';inp.placeholder='Type a character name to guess...';},1600);}return;}if(statsWrong.indexOf(gc.name)>=0)return;if(gc.name===statsTarget.name){statsOver=true;statsRevealed=STATS_ROWS.length;renderStats();var rEl=document.getElementById('stats-result');if(rEl)rEl.innerHTML=buildGenericResult(true,statsTarget,'📊','Stats',statsWrong.length,'initStatsMode');}else{statsWrong.push(gc.name);if(statsRevealed<STATS_ROWS.length)statsRevealed++;renderStats();var inp2=document.getElementById('stats-search');if(inp2){inp2.style.borderColor='var(--red)';setTimeout(function(){inp2.style.borderColor='';},700);}}}
+window.stsSubmit=stsSubmit;
+function stsGiveUp(){if(statsOver)return;if(!statsWrong.length){var inp=document.getElementById('stats-search');if(inp){inp.style.borderColor='var(--red)';inp.placeholder='Make at least one guess first!';setTimeout(function(){inp.style.borderColor='';inp.placeholder='Type a character name to guess...';},1600);}return;}statsOver=true;statsRevealed=STATS_ROWS.length;renderStats();var rEl=document.getElementById('stats-result');if(rEl)rEl.innerHTML=buildGenericResult(false,statsTarget,'📊','Stats',statsWrong.length,'initStatsMode');}
+window.stsGiveUp=stsGiveUp;
+
+// =============================================================
+// SILHOUETTE MODE
+// =============================================================
+var silTarget=null,silWrong=[],silOver=false,silSugg=[],silAIdx=-1,silRevealed=0;
+var SIL_CLUES=[{label:'Sea of Origin',icon:'🗺️',fmt:function(c){return c.sea;}},{label:'Gender',icon:'👤',fmt:function(c){return c.gender;}},{label:'First Arc',icon:'📖',fmt:function(c){return c.arc;}},{label:'Affiliation',icon:'🏴',fmt:function(c){return c.affiliation;}}];
+var SIL_BLURS=['blur(20px) brightness(0.1)','blur(14px) brightness(0.2)','blur(8px) brightness(0.4)','blur(3px) brightness(0.7)','blur(0px) brightness(1)'];
+function initSilMode(){silTarget=CHAR_DB[Math.floor(Math.random()*CHAR_DB.length)];silWrong=[];silOver=false;silRevealed=0;renderSil();}
+window.initSilMode=initSilMode;
+function renderSil(){
+  var el=document.getElementById('silhouette-mode');
+  var col=avatarColor(silTarget);var init=silTarget.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
+  var blurF=silOver?SIL_BLURS[4]:SIL_BLURS[Math.min(silRevealed,4)];
+  var avatarHtml='<div class="sil-avatar" style="background:linear-gradient(135deg,'+col+','+col+'88);filter:'+blurF+'">'+(silOver||silRevealed>=4?init:'?')+'</div>';
+  var cluesHtml=SIL_CLUES.map(function(clue,i){var rev=i<silRevealed||silOver;return '<div class="sil-clue'+(rev?'':' locked')+'"><span style="font-size:1.2rem">'+(rev?clue.icon:'🔒')+'</span><div><div style="font-weight:700;color:var(--gold);font-size:0.82rem;font-family:Cinzel,serif">'+(rev?clue.label:'Locked')+'</div><div style="color:'+(rev?'var(--white)':'#4b5563')+';font-size:0.95rem">'+(rev?clue.fmt(silTarget):'Wrong guess to reveal')+'</div></div></div>';}).join('');
+  var wrongHtml=silWrong.length?'<div class="desc-wrong-guesses"><h4>Wrong guesses ('+silWrong.length+')</h4><div class="desc-wrong-list">'+silWrong.map(function(n){return '<span class="wrong-tag">'+n+'</span>';}).join('')+'</div></div>':'';
+  var hint=!silOver?'<p class="clue-reveal-hint">Each wrong guess unblurs the avatar & reveals a clue ('+silRevealed+'/'+SIL_CLUES.length+')</p>':'';
+  var inputHtml=silOver?'':buildModeSearch('sil-search','silSrch','silKey','silPick','silGiveUp','sil-sugg');
+  el.innerHTML='<div style="max-width:700px;margin:0 auto 1rem;text-align:center"><h2 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem">👤 Who is this silhouette?</h2><p style="color:#94a3b8;font-size:0.88rem">Identify the character — wrong guesses reveal more clues</p></div><div class="silhouette-wrap">'+avatarHtml+'<div class="sil-clue-list">'+cluesHtml+'</div></div>'+hint+wrongHtml+inputHtml+'<div id="sil-result"></div>';
+  if(!silOver){var inp=document.getElementById('sil-search');if(inp)inp.focus();}
+}
+function silSrch(q){q=q.trim().toLowerCase();var sg=document.getElementById('sil-sugg');if(!q){sg.style.display='none';silSugg=[];return;}var byN=CHAR_DB.filter(function(c){return c.name.toLowerCase().includes(q);});var aNames=new Set(searchByAlias(q));var byA=CHAR_DB.filter(function(c){return aNames.has(c.name)&&byN.indexOf(c)<0;});silSugg=byN.concat(byA).slice(0,10);if(!silSugg.length){sg.style.display='none';return;}silAIdx=-1;sg.style.display='block';sg.innerHTML=silSugg.map(function(c,i){var already=silWrong.indexOf(c.name)>=0;var init=c.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();var col=avatarColor(c);return '<div class="suggestion-item'+(already?' already-guessed':'')+'" onclick="silPick('+i+')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:10px;font-size:0.95rem;'+(already?'opacity:0.4;pointer-events:none;':'')+'"><div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.78rem;flex-shrink:0;color:white;background:linear-gradient(135deg,'+col+','+col+'88)">'+init+'</div><span>'+c.name+'</span>'+(already?'<small style="color:#6b7280;margin-left:auto">Already guessed</small>':'')+'</div>';}).join('');}
+window.silSrch=silSrch;
+function silPick(i){var c=silSugg[i];if(!c)return;document.getElementById('sil-search').value=c.name;document.getElementById('sil-sugg').style.display='none';silSubmit(c.name);}
+window.silPick=silPick;
+function silKey(e){var sg=document.getElementById('sil-sugg');var items=sg?sg.querySelectorAll('.suggestion-item:not(.already-guessed)'):[];if(e.key==='ArrowDown'){e.preventDefault();silAIdx=Math.min(silAIdx+1,items.length-1);items.forEach(function(el,i){el.style.background=i===silAIdx?'rgba(240,192,64,0.12)':'';}); }else if(e.key==='ArrowUp'){e.preventDefault();silAIdx=Math.max(silAIdx-1,0);items.forEach(function(el,i){el.style.background=i===silAIdx?'rgba(240,192,64,0.12)':'';}); }else if(e.key==='Enter'){e.preventDefault();if(silAIdx>=0&&silSugg[silAIdx])silPick(silAIdx);else{var v=document.getElementById('sil-search').value.trim();if(v)silSubmit(v);}}else if(e.key==='Escape'){if(sg)sg.style.display='none';}}
+window.silKey=silKey;
+function silSubmit(name){if(silOver)return;var canon=ALIAS_LOOKUP[name.toLowerCase()];var lname=(canon||name).toLowerCase();var gc=CHAR_DB.find(function(c){return c.name.toLowerCase()===lname||c.name.toLowerCase()===name.toLowerCase();});if(!gc){var inp=document.getElementById('sil-search');if(inp){inp.style.borderColor='var(--red)';inp.placeholder='Not found!';setTimeout(function(){inp.style.borderColor='';inp.placeholder='Type a character name to guess...';},1600);}return;}if(silWrong.indexOf(gc.name)>=0)return;if(gc.name===silTarget.name){silOver=true;silRevealed=SIL_CLUES.length;renderSil();var rEl=document.getElementById('sil-result');if(rEl)rEl.innerHTML=buildGenericResult(true,silTarget,'👤','Silhouette',silWrong.length,'initSilMode');}else{silWrong.push(gc.name);if(silRevealed<SIL_CLUES.length)silRevealed++;renderSil();var inp2=document.getElementById('sil-search');if(inp2){inp2.style.borderColor='var(--red)';setTimeout(function(){inp2.style.borderColor='';},700);}}}
+window.silSubmit=silSubmit;
+function silGiveUp(){if(silOver)return;if(!silWrong.length){var inp=document.getElementById('sil-search');if(inp){inp.style.borderColor='var(--red)';inp.placeholder='Make at least one guess first!';setTimeout(function(){inp.style.borderColor='';inp.placeholder='Type a character name to guess...';},1600);}return;}silOver=true;silRevealed=SIL_CLUES.length;renderSil();var rEl=document.getElementById('sil-result');if(rEl)rEl.innerHTML=buildGenericResult(false,silTarget,'👤','Silhouette',silWrong.length,'initSilMode');}
+window.silGiveUp=silGiveUp;
+
+// =============================================================
+// CREW MODE
+// =============================================================
+var crewTarget=null,crewMembers=[],crewWrong=[],crewOver=false,crewSugg=[],crewAIdx=-1,crewRevealed=2;
+function initCrewMode(){var affGroups={};CHAR_DB.forEach(function(c){if(!affGroups[c.affiliation])affGroups[c.affiliation]=[];affGroups[c.affiliation].push(c);});var validCrews=Object.keys(affGroups).filter(function(k){return affGroups[k].length>=4;});var crewName=validCrews[Math.floor(Math.random()*validCrews.length)];var members=affGroups[crewName].slice();for(var i=members.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=members[i];members[i]=members[j];members[j]=t;}crewTarget=members[0];crewMembers=members.slice(1);crewWrong=[];crewOver=false;crewRevealed=Math.min(2,crewMembers.length);renderCrew();}
+window.initCrewMode=initCrewMode;
+function renderCrew(){var el=document.getElementById('crew-mode');var crewName=crewTarget.affiliation;var totalCount=crewMembers.length+1;var shownMembers=crewMembers.slice(0,crewRevealed);var chipsHtml=shownMembers.map(function(m){var init=m.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();var col=avatarColor(m);return '<div class="crew-chip"><div class="ca" style="background:linear-gradient(135deg,'+col+','+col+'88)">'+init+'</div>'+m.name+'</div>';}).join('');var mysteryHtml='<div class="crew-chip" style="border-color:rgba(240,192,64,0.5);border-style:dashed"><div class="crew-mystery">❓</div><span style="color:var(--gold);font-family:Cinzel,serif">???</span></div>';var wrongHtml=crewWrong.length?'<div class="desc-wrong-guesses"><h4>Wrong guesses ('+crewWrong.length+')</h4><div class="desc-wrong-list">'+crewWrong.map(function(n){return '<span class="wrong-tag">'+n+'</span>';}).join('')+'</div></div>':'';var hint=!crewOver?'<p class="clue-reveal-hint">Showing '+crewRevealed+' of '+(totalCount-1)+' known members — wrong guess reveals another</p>':'';var inputHtml=crewOver?'':buildModeSearch('crew-search','crewSrch','crewKey','crewPick','crewGiveUp','crew-sugg');el.innerHTML='<div style="max-width:700px;margin:0 auto 1rem;text-align:center"><h2 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem">👥 Who is the mystery crew member?</h2><p style="color:#94a3b8;font-size:0.88rem">We know some members — guess the hidden one!</p></div><div class="crew-header"><div style="font-family:Cinzel,serif;font-size:1.1rem;color:var(--gold);margin-bottom:0.3rem">🏴 '+crewName+'</div><div style="color:#94a3b8;font-size:0.85rem">'+crewTarget.sea+' · '+crewTarget.affiliationType+' · '+totalCount+' members in database</div></div><div class="crew-members">'+chipsHtml+mysteryHtml+'</div>'+hint+wrongHtml+inputHtml+'<div id="crew-result"></div>';if(!crewOver){var inp=document.getElementById('crew-search');if(inp)inp.focus();}}
+function crewSrch(q){q=q.trim().toLowerCase();var sg=document.getElementById('crew-sugg');if(!q){sg.style.display='none';crewSugg=[];return;}var byN=CHAR_DB.filter(function(c){return c.affiliation===crewTarget.affiliation&&c.name.toLowerCase().includes(q);});var byAll=CHAR_DB.filter(function(c){return c.name.toLowerCase().includes(q)&&byN.indexOf(c)<0;});crewSugg=byN.concat(byAll).slice(0,10);if(!crewSugg.length){sg.style.display='none';return;}crewAIdx=-1;sg.style.display='block';sg.innerHTML=crewSugg.map(function(c,i){var already=crewWrong.indexOf(c.name)>=0;var init=c.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();var col=avatarColor(c);var isMember=c.affiliation===crewTarget.affiliation;return '<div class="suggestion-item'+(already?' already-guessed':'')+'" onclick="crewPick('+i+')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:10px;font-size:0.95rem;'+(already?'opacity:0.4;pointer-events:none;':'')+'"><div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.78rem;flex-shrink:0;color:white;background:linear-gradient(135deg,'+col+','+col+'88)">'+init+'</div><div><span>'+c.name+'</span>'+(isMember?'<small style="color:var(--gold);display:block;font-size:0.78rem">'+c.affiliation+'</small>':'')+'</div>'+(already?'<small style="color:#6b7280;margin-left:auto">Already guessed</small>':'')+'</div>';}).join('');}
+window.crewSrch=crewSrch;
+function crewPick(i){var c=crewSugg[i];if(!c)return;document.getElementById('crew-search').value=c.name;document.getElementById('crew-sugg').style.display='none';crewSubmit(c.name);}
+window.crewPick=crewPick;
+function crewKey(e){var sg=document.getElementById('crew-sugg');var items=sg?sg.querySelectorAll('.suggestion-item:not(.already-guessed)'):[];if(e.key==='ArrowDown'){e.preventDefault();crewAIdx=Math.min(crewAIdx+1,items.length-1);items.forEach(function(el,i){el.style.background=i===crewAIdx?'rgba(240,192,64,0.12)':'';}); }else if(e.key==='ArrowUp'){e.preventDefault();crewAIdx=Math.max(crewAIdx-1,0);items.forEach(function(el,i){el.style.background=i===crewAIdx?'rgba(240,192,64,0.12)':'';}); }else if(e.key==='Enter'){e.preventDefault();if(crewAIdx>=0&&crewSugg[crewAIdx])crewPick(crewAIdx);else{var v=document.getElementById('crew-search').value.trim();if(v)crewSubmit(v);}}else if(e.key==='Escape'){if(sg)sg.style.display='none';}}
+window.crewKey=crewKey;
+function crewSubmit(name){if(crewOver)return;var canon=ALIAS_LOOKUP[name.toLowerCase()];var lname=(canon||name).toLowerCase();var gc=CHAR_DB.find(function(c){return c.name.toLowerCase()===lname||c.name.toLowerCase()===name.toLowerCase();});if(!gc){var inp=document.getElementById('crew-search');if(inp){inp.style.borderColor='var(--red)';inp.placeholder='Not found!';setTimeout(function(){inp.style.borderColor='';inp.placeholder='Type a character name to guess...';},1600);}return;}if(crewWrong.indexOf(gc.name)>=0)return;if(gc.name===crewTarget.name){crewOver=true;renderCrew();var rEl=document.getElementById('crew-result');if(rEl)rEl.innerHTML=buildGenericResult(true,crewTarget,'👥','Crew',crewWrong.length,'initCrewMode');}else{crewWrong.push(gc.name);if(crewRevealed<crewMembers.length)crewRevealed++;renderCrew();var inp2=document.getElementById('crew-search');if(inp2){inp2.style.borderColor='var(--red)';setTimeout(function(){inp2.style.borderColor='';},700);}}}
+window.crewSubmit=crewSubmit;
+function crewGiveUp(){if(crewOver)return;if(!crewWrong.length){var inp=document.getElementById('crew-search');if(inp){inp.style.borderColor='var(--red)';inp.placeholder='Make at least one guess first!';setTimeout(function(){inp.style.borderColor='';inp.placeholder='Type a character name to guess...';},1600);}return;}crewOver=true;crewRevealed=crewMembers.length;renderCrew();var rEl=document.getElementById('crew-result');if(rEl)rEl.innerHTML=buildGenericResult(false,crewTarget,'👥','Crew',crewWrong.length,'initCrewMode');}
+window.crewGiveUp=crewGiveUp;
+
+// =============================================================
+// ABILITY MODE
+// =============================================================
+var abilityTarget=null,abilityWrong=[],abilityOver=false,abilitySugg=[],abilityAIdx=-1,abilityRevealed=1;
+function initAbilityMode(){var pool=Object.keys(CHAR_ABILITY);var name=pool[Math.floor(Math.random()*pool.length)];abilityTarget=CHAR_DB.find(function(c){return c.name===name;})||{name:name,affiliation:'Unknown',affiliationType:'Pirate'};abilityWrong=[];abilityOver=false;abilityRevealed=1;renderAbility();}
+window.initAbilityMode=initAbilityMode;
+function renderAbility(){var el=document.getElementById('ability-mode');var data=CHAR_ABILITY[abilityTarget.name];var clues=data?data.clues:['No ability data.','—','—','—'];var cluesHtml=clues.map(function(txt,i){var rev=i<abilityRevealed||abilityOver;return '<div class="ability-clue'+(rev?'':' locked')+'"><div class="ab-num">'+(rev?(i+1):'🔒')+'</div><div class="ab-text'+(rev?'':' blurred')+'">'+txt+'</div></div>';}).join('');var wrongHtml=abilityWrong.length?'<div class="desc-wrong-guesses"><h4>Wrong guesses ('+abilityWrong.length+')</h4><div class="desc-wrong-list">'+abilityWrong.map(function(n){return '<span class="wrong-tag">'+n+'</span>';}).join('')+'</div></div>':'';var hint=!abilityOver?'<p class="clue-reveal-hint">Each wrong guess reveals the next clue ('+abilityRevealed+'/'+clues.length+' shown)</p>':'';var inputHtml=abilityOver?'':buildModeSearch('ability-search','abSrch','abKey','abPick','abGiveUp','ability-sugg');el.innerHTML='<div style="max-width:700px;margin:0 auto 1rem;text-align:center"><h2 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem">⚡ Whose ability is this?</h2><p style="color:#94a3b8;font-size:0.88rem">Identify the character from their Devil Fruit or special ability</p></div><div class="ability-clues">'+cluesHtml+'</div>'+hint+wrongHtml+inputHtml+'<div id="ability-result"></div>';if(!abilityOver){var inp=document.getElementById('ability-search');if(inp)inp.focus();}}
+function abSrch(q){q=q.trim().toLowerCase();var sg=document.getElementById('ability-sugg');if(!q){sg.style.display='none';abilitySugg=[];return;}var byN=CHAR_DB.filter(function(c){return c.name.toLowerCase().includes(q);});var aNames=new Set(searchByAlias(q));var byA=CHAR_DB.filter(function(c){return aNames.has(c.name)&&byN.indexOf(c)<0;});abilitySugg=byN.concat(byA).slice(0,10);if(!abilitySugg.length){sg.style.display='none';return;}abilityAIdx=-1;sg.style.display='block';sg.innerHTML=abilitySugg.map(function(c,i){var already=abilityWrong.indexOf(c.name)>=0;var init=c.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();var col=avatarColor(c);return '<div class="suggestion-item'+(already?' already-guessed':'')+'" onclick="abPick('+i+')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:10px;font-size:0.95rem;'+(already?'opacity:0.4;pointer-events:none;':'')+'"><div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:0.78rem;flex-shrink:0;color:white;background:linear-gradient(135deg,'+col+','+col+'88)">'+init+'</div><span>'+c.name+'</span>'+(already?'<small style="color:#6b7280;margin-left:auto">Already guessed</small>':'')+'</div>';}).join('');}
+window.abSrch=abSrch;
+function abPick(i){var c=abilitySugg[i];if(!c)return;document.getElementById('ability-search').value=c.name;document.getElementById('ability-sugg').style.display='none';abSubmit(c.name);}
+window.abPick=abPick;
+function abKey(e){var sg=document.getElementById('ability-sugg');var items=sg?sg.querySelectorAll('.suggestion-item:not(.already-guessed)'):[];if(e.key==='ArrowDown'){e.preventDefault();abilityAIdx=Math.min(abilityAIdx+1,items.length-1);items.forEach(function(el,i){el.style.background=i===abilityAIdx?'rgba(240,192,64,0.12)':'';}); }else if(e.key==='ArrowUp'){e.preventDefault();abilityAIdx=Math.max(abilityAIdx-1,0);items.forEach(function(el,i){el.style.background=i===abilityAIdx?'rgba(240,192,64,0.12)':'';}); }else if(e.key==='Enter'){e.preventDefault();if(abilityAIdx>=0&&abilitySugg[abilityAIdx])abPick(abilityAIdx);else{var v=document.getElementById('ability-search').value.trim();if(v)abSubmit(v);}}else if(e.key==='Escape'){if(sg)sg.style.display='none';}}
+window.abKey=abKey;
+function abSubmit(name){if(abilityOver)return;var canon=ALIAS_LOOKUP[name.toLowerCase()];var lname=(canon||name).toLowerCase();var gc=CHAR_DB.find(function(c){return c.name.toLowerCase()===lname||c.name.toLowerCase()===name.toLowerCase();});if(!gc){var inp=document.getElementById('ability-search');if(inp){inp.style.borderColor='var(--red)';inp.placeholder='Not found!';setTimeout(function(){inp.style.borderColor='';inp.placeholder='Type a character name to guess...';},1600);}return;}if(abilityWrong.indexOf(gc.name)>=0)return;if(gc.name===abilityTarget.name){abilityOver=true;abilityRevealed=4;renderAbility();var rEl=document.getElementById('ability-result');if(rEl)rEl.innerHTML=buildGenericResult(true,abilityTarget,'⚡','Ability',abilityWrong.length,'initAbilityMode');}else{abilityWrong.push(gc.name);if(abilityRevealed<4)abilityRevealed++;renderAbility();var inp2=document.getElementById('ability-search');if(inp2){inp2.style.borderColor='var(--red)';setTimeout(function(){inp2.style.borderColor='';},700);}}}
+window.abSubmit=abSubmit;
+function abGiveUp(){if(abilityOver)return;if(!abilityWrong.length){var inp=document.getElementById('ability-search');if(inp){inp.style.borderColor='var(--red)';inp.placeholder='Make at least one guess first!';setTimeout(function(){inp.style.borderColor='';inp.placeholder='Type a character name to guess...';},1600);}return;}abilityOver=true;abilityRevealed=4;renderAbility();var rEl=document.getElementById('ability-result');if(rEl)rEl.innerHTML=buildGenericResult(false,abilityTarget,'⚡','Ability',abilityWrong.length,'initAbilityMode');}
+window.abGiveUp=abGiveUp;
+
+// =============================================================
+// SHARED HELPERS
+// =============================================================
+function buildModeSearch(inputId,srchFn,keyFn,pickFn,giveupFn,suggId){return '<div class="search-section" style="max-width:700px;margin:0 auto 1rem"><div class="search-wrapper" style="flex:1;position:relative"><input type="text" id="'+inputId+'" autocomplete="off" placeholder="Type a character name to guess..." style="width:100%;background:var(--card);border:2px solid rgba(240,192,64,0.4);color:var(--white);padding:12px 16px;border-radius:10px;font-size:1rem;font-family:Nunito,sans-serif;outline:none" oninput="'+srchFn+'(this.value)" onkeydown="'+keyFn+'(event)"><div id="'+suggId+'" style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--panel);border:1px solid rgba(240,192,64,0.3);border-radius:10px;max-height:260px;overflow-y:auto;z-index:100;display:none;box-shadow:0 10px 30px rgba(0,0,0,0.5)"></div></div><button class="btn-giveup" onclick="'+giveupFn+'()">Give Up</button></div>';}
+window.buildModeSearch=buildModeSearch;
+function buildGenericResult(won,target,modeIcon,modeName,wrongCount,reinitFn){var col=avatarColor(target);var init=target.name.split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();var bg=won?'linear-gradient(135deg,rgba(22,101,52,0.3),rgba(21,128,61,0.2))':'linear-gradient(135deg,rgba(127,29,29,0.3),rgba(153,17,17,0.2))';var border=won?'var(--green)':'var(--red)';var title=won?('🏆 You got it! '+(wrongCount===0?'(First try!!)':'')):'☠️ It was...';var subtitle=won?('Guessed with <strong style="color:var(--gold)">'+wrongCount+'</strong> wrong guess'+(wrongCount===1?'':'es')+'!'):'';var btnLabel=won?(modeIcon+' Next Character'):(modeIcon+' Try Again');return '<div style="display:block;text-align:center;padding:2rem;margin-top:1rem;border-radius:16px;background:'+bg+';border:2px solid '+border+'"><h2 style="font-family:Cinzel,serif;font-size:1.8rem;margin-bottom:0.5rem;color:var(--gold)">'+title+'</h2>'+(subtitle?'<p style="color:#94a3b8;margin-bottom:1rem">'+subtitle+'</p>':'')+'<div style="display:inline-flex;align-items:center;gap:14px;background:var(--card);border:2px solid var(--gold);border-radius:12px;padding:14px 20px;margin:0.8rem auto"><div style="background:linear-gradient(135deg,'+col+','+col+'99);width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:900;border:2px solid var(--gold);flex-shrink:0;color:white">'+init+'</div><div><h3 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.1rem">'+target.name+'</h3><p style="color:#94a3b8;font-size:0.82rem;margin-top:2px">'+target.affiliation+'</p></div></div><br><button class="btn-new-game" onclick="'+reinitFn+'()" style="margin-top:1rem">'+btnLabel+'</button></div>';}
+window.buildGenericResult=buildGenericResult;
+
+initGame();
+
+</script>
+</body>
+</html>
