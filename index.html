@@ -1529,25 +1529,54 @@ var SIL_CLUES=[
 ];
 var SIL_BLURS=['#000000','#000000','#2d2d2d','#888888',''];
 
+// One Piece MAL anime ID = 21. Cache character images on first use.
+var SIL_IMAGE_CACHE = {};
+var SIL_ROSTER_LOADED = false;
+
+function loadOPRoster(cb){
+  if(SIL_ROSTER_LOADED){cb();return;}
+  // Fetch One Piece character list from Jikan (paginated, get first 100)
+  fetch('https://api.jikan.moe/v4/anime/21/characters?limit=100')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data.data)return;
+      data.data.forEach(function(entry){
+        var c=entry.character;
+        if(c&&c.name&&c.images&&c.images.jpg){
+          // Store by both full name and first name for matching
+          var key=c.name.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();
+          SIL_IMAGE_CACHE[key]=c.images.jpg.image_url;
+        }
+      });
+      SIL_ROSTER_LOADED=true;
+      cb();
+    })
+    .catch(function(){SIL_ROSTER_LOADED=true;cb();});
+}
+
+function findSilImg(charName){
+  // Try exact match, then first-name match
+  var norm=function(s){return s.toLowerCase().replace(/[^a-z0-9]/g,' ').trim();};
+  var n=norm(charName);
+  if(SIL_IMAGE_CACHE[n])return SIL_IMAGE_CACHE[n];
+  // Try last name first (Jikan uses "Lastname, Firstname" format sometimes)
+  var parts=charName.split(' ');
+  var reversed=norm(parts.slice(-1)[0]+' '+parts.slice(0,-1).join(' '));
+  if(SIL_IMAGE_CACHE[reversed])return SIL_IMAGE_CACHE[reversed];
+  // Try first name only
+  var first=norm(parts[0]);
+  var found=Object.keys(SIL_IMAGE_CACHE).find(function(k){return k.startsWith(first)||k.includes(first);});
+  return found?SIL_IMAGE_CACHE[found]:null;
+}
+
 function initSilMode(){
   silTarget=CHAR_DB[Math.floor(Math.random()*CHAR_DB.length)];
   silWrong=[];silOver=false;silRevealed=0;silImgUrl=null;
   renderSil();
-  // Fetch real character image from Jikan API
-  var q=encodeURIComponent(silTarget.name.split(' ').slice(0,2).join(' '));
-  fetch('https://api.jikan.moe/v4/characters?q='+q+'&limit=5')
-    .then(function(r){return r.json();})
-    .then(function(data){
-      if(!data.data||!data.data.length)return;
-      // Find best match by name
-      var match=data.data.find(function(c){return c.name.toLowerCase().includes(silTarget.name.split(' ')[0].toLowerCase());});
-      var entry=match||data.data[0];
-      if(entry&&entry.images&&entry.images.jpg){
-        silImgUrl=entry.images.jpg.image_url;
-        renderSil();
-      }
-    })
-    .catch(function(){});
+  loadOPRoster(function(){
+    silImgUrl=findSilImg(silTarget.name);
+    renderSil();
+  });
 }
 window.initSilMode=initSilMode;
 
@@ -1561,11 +1590,11 @@ function renderSil(){
   if(silImgUrl){
     // Blur + darken progressively reveals the character
     var silFilters = [
-      'blur(18px) brightness(0.35) grayscale(1)',   // 0 wrong - heavy blur, dark, b&w
-      'blur(12px) brightness(0.5) grayscale(0.8)',  // 1 wrong - still blurry
-      'blur(6px)  brightness(0.7) grayscale(0.4)',  // 2 wrong - shape visible
-      'blur(2px)  brightness(0.9) grayscale(0)',    // 3 wrong - almost there
-      'blur(0px)  brightness(1)   grayscale(0)'     // 4 wrong / revealed
+      'blur(22px) brightness(0.3) grayscale(1)',
+      'blur(16px) brightness(0.45) grayscale(0.9)',
+      'blur(10px) brightness(0.6) grayscale(0.6)',
+      'blur(4px)  brightness(0.8) grayscale(0.2)',
+      'blur(0px)  brightness(1)   grayscale(0)'
     ];
     var imgFilter = silOver ? silFilters[4] : silFilters[Math.min(silRevealed,4)];
     avatarHtml='<div style="margin:0 auto 1.5rem;position:relative;display:inline-block;border-radius:8px;overflow:hidden;background:#fff">'
