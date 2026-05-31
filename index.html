@@ -1529,6 +1529,22 @@ var SIL_CLUES=[
 ];
 var SIL_BLURS=['#000000','#000000','#2d2d2d','#888888',''];
 
+
+// Famous characters pool for Silhouette mode
+var SIL_KNOWN = [
+  "Monkey D. Luffy","Roronoa Zoro","Nami","Usopp","Sanji","Tony Tony Chopper",
+  "Nico Robin","Franky","Brook","Jinbe",
+  "Portgas D. Ace","Sabo","Monkey D. Garp","Monkey D. Dragon",
+  "Edward Newgate","Shanks","Dracule Mihawk","Boa Hancock",
+  "Marshall D. Teach","Trafalgar D. Water Law","Eustass Kid",
+  "Donquixote Doflamingo","Crocodile","Gecko Moria",
+  "Akainu (Sakazuki)","Aokiji (Kuzan)","Kizaru (Borsalino)","Sengoku",
+  "Rob Lucci","Smoker","Tashigi","Coby",
+  "Charlotte Linlin","Kaido","Yamato",
+  "Marco","Buggy","Emporio Ivankov",
+  "Silvers Rayleigh","Charlotte Katakuri","Carrot"
+];
+
 // One Piece MAL anime ID = 21. Cache character images on first use.
 var SIL_IMAGE_CACHE = {};
 var SIL_ROSTER_LOADED = false;
@@ -1570,7 +1586,8 @@ function findSilImg(charName){
 }
 
 function initSilMode(){
-  silTarget=CHAR_DB[Math.floor(Math.random()*CHAR_DB.length)];
+  var silPool=CHAR_DB.filter(function(c){return SIL_KNOWN.indexOf(c.name)>=0;});
+  silTarget=silPool[Math.floor(Math.random()*silPool.length)]||CHAR_DB[0];
   silWrong=[];silOver=false;silRevealed=0;silImgUrl=null;
   renderSil();
   loadOPRoster(function(){
