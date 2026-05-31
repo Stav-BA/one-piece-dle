@@ -1543,7 +1543,7 @@ function renderSil(){
   var silBg = (silOver||silRevealed>=4) ? 'linear-gradient(135deg,'+col+','+col+'88)' : SIL_BLURS[Math.min(silRevealed,4)];
   var silContent = (silOver||silRevealed>=4) ? init : '?';
   var avatarHtml='<div class="sil-avatar" style="background:'+silBg+';border-color:rgba(240,192,64,0.8)">'
-    +'<span style="font-size:'+(silRevealed>=4||silOver?'2rem':'2.8rem')+';color:white;text-shadow:0 2px 12px rgba(0,0,0,1)">'+silContent+'</span>'
+    +'<span style="font-size:3rem;font-weight:900;color:'+(silOver||silRevealed>=4?'white':'rgba(255,255,255,0.9)')+'">'+silContent+'</span>'
     +'</div>';
   var cluesHtml=SIL_CLUES.map(function(clue,i){
     var rev=i<silRevealed||silOver;
@@ -1559,7 +1559,7 @@ function renderSil(){
     +'<h2 style="font-family:Cinzel,serif;color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem">👤 Who is this silhouette?</h2>'
     +'<p style="color:#94a3b8;font-size:0.88rem">Identify the character — wrong guesses reveal more clues</p>'
     +'</div>'
-    +'<div class="silhouette-wrap">'+avatarHtml+'<div class="sil-clue-list">'+cluesHtml+'</div></div>'
+    +'<div class="silhouette-wrap" style="text-align:center;padding:2rem 1.5rem 1.5rem;background:rgba(13,20,38,0.95);border:2px solid rgba(240,192,64,0.3);border-radius:16px;max-width:700px;margin:0 auto 1rem">'+avatarHtml+'<div class="sil-clue-list" style="margin-top:1.5rem">'+cluesHtml+'</div></div>'
     +hint+wrongHtml+inputHtml+'<div id="sil-result"></div>';
   if(!silOver){var inp=document.getElementById('sil-search');if(inp)inp.focus();}
 }
